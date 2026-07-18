@@ -1,0 +1,35 @@
+{
+  "summary": "TherapiShots OTP auth increment E2E PASSED. Backend: 31/31 pytest pass against EXPO_PUBLIC_BACKEND_URL — covers config, NEW OTP auth (register happy-path returns dev_code+mock=true+token, verify issues JWT that works on /api/auth/me, register missing name/dob -> 400, register under-18 -> 403, register duplicate phone -> 400, login-no-account -> 404, verify wrong code -> 401, demo phone +919999900000 login+verify+/me returns phone, 20s resend cooldown observed as 429 on immediate second send), check-ins (create, multiple/day, unknown mood 400), today/insights.daily_moods(7 entries)/pulse/progress, psychologists (list, detail with availability, 404, requires auth), bookings with MOCK payment (paid+provider=mock+MOCK- txn id, cancel flips status), and auth enforcement on 6 protected endpoints. Frontend (Expo web preview, mobile 390x844): Onboarding -> age-confirm -> Get started -> Register (name/phone/dob) -> Send code -> dev-code-box shows 'Dev code (no SMS yet): NNNNNN' -> otp-input -> Verify -> lands on Today (today-mood-hero visible) -> Me tab shows the new phone number. Login flow with demo phone +919999900000: phone -> Send code -> dev-code-box -> Verify -> Today. Regression on demo user: tapping Hopeful quick-logs (Saved indicator), Insights loads 7-day mood strip, Progress loads, Support -> Find a psychologist card visible, Me shows +919999900000. No blocking issues.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": [
+      {"component": "pointerEvents prop", "issue": "Non-blocking Expo web console warning: 'props.pointerEvents is deprecated. Use style.pointerEvents'. Emitted by some RN/Expo internal component; not from user code paths that were tested. No functional impact."}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_therapishots_api.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "(Optional) Investigate source of 'props.pointerEvents is deprecated' console warning; migrate to style.pointerEvents if it originates in the app's own components."
+  ],
+  "critical_code_review_comments": [
+    "server.py /api/auth/request-otp: correctly rejects under-18 (403), duplicate phone (400), missing name/dob (400 for register), and 404 for login with unknown phone. Returns dev_code+mock=true as documented — clearly labelled MOCK.",
+    "server.py /api/auth/verify-otp: on first successful register-verify it inserts the user (with phone, optional email, dob, default consents) AND calls seed_history — so new accounts land in the app with 6 weeks of history immediately. Good.",
+    "server.py startup: creates unique sparse index on users.phone and idempotently seeds the +919999900000 demo user with history. Solid.",
+    "server.py 20s resend cooldown returns 429 correctly; verified via back-to-back POST /auth/request-otp.",
+    "Legacy email/password endpoints /api/auth/register + /api/auth/login are still mounted but unused by the UI — acceptable for now; consider marking deprecated or gating behind a feature flag before shipping."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_therapishots_api.py (rewrote email/password auth tests to cover the new OTP flow: request-otp -> dev_code -> verify-otp; kept coverage of check-ins, analytics, psychologists, bookings)"
+  ],
+  "success_rate": {"backend": "100% (31/31)", "frontend": "100% of tested flows (register OTP, login OTP with demo phone, Me shows phone, Today quick-log, Insights, Progress, Support screen)"},
+  "seed_data_creation": "Backend seeds demo phone +919999900000 on startup with ~42 days of correlated mood+health. New register-verify auto-seeds ~42 days per new user. Playwright register run created one extra user with phone +919807418529 (Playwright User) — safe to leave or clean up.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Env var is EXPO_PUBLIC_BACKEND_URL (public URL). New auth is phone + mock OTP: POST /api/auth/request-otp with mode=register (needs name+date_of_birth, optional email) or mode=login; response includes dev_code (6 digits) and mock=true. POST /api/auth/verify-otp with {phone, code} returns {token, user}. Demo phone is +919999900000 (login mode). Legacy /api/auth/register + /api/auth/login (email/password) still work but the UI no longer uses them. Frontend testIDs to know: age-confirm, get-started-button, have-account-button, register-{name,phone,dob,email}-input, register-send-otp-button, login-phone-input, login-send-otp-button, dev-code-box (contains '...: NNNNNN'), otp-input, verify-otp-button, back-button, resend-code, change-number, today-mood-hero, logout. 20s resend cooldown on request-otp — insert time.sleep(21) between repeated sends for the same phone.",
+  "rca_of_issue": "N/A — no blocking issues found."
+}

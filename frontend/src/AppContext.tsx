@@ -5,7 +5,8 @@ import { MOODS, Mood } from "./moods";
 
 type User = {
   id: string;
-  email: string;
+  phone?: string;
+  email?: string | null;
   name: string;
   language: Lang;
   consents: Record<string, boolean>;
@@ -19,8 +20,8 @@ type Ctx = {
   t: (k: string) => string;
   moods: Mood[];
   setLang: (l: Lang) => Promise<void>;
-  login: (email: string, password: string) => Promise<void>;
-  register: (body: any) => Promise<void>;
+  requestOtp: (payload: any) => Promise<{ dev_code?: string }>;
+  verifyOtp: (phone: string, code: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
   updateConsents: (c: Record<string, boolean>) => Promise<void>;
@@ -57,15 +58,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     bootstrap();
   }, [bootstrap]);
 
-  const login = async (email: string, password: string) => {
-    const res = await api.post("/auth/login", { email, password });
-    await saveToken(res.token);
-    setUser(res.user);
-    setLangState(res.user.language || "en");
+  const requestOtp = async (payload: any) => {
+    return api.post("/auth/request-otp", payload);
   };
 
-  const register = async (body: any) => {
-    const res = await api.post("/auth/register", body);
+  const verifyOtp = async (phone: string, code: string) => {
+    const res = await api.post("/auth/verify-otp", { phone, code });
     await saveToken(res.token);
     setUser(res.user);
     setLangState(res.user.language || "en");
@@ -100,7 +98,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AppContext.Provider
-      value={{ ready, user, lang, t: makeT(lang), moods, setLang, login, register, logout, refreshUser, updateConsents }}
+      value={{ ready, user, lang, t: makeT(lang), moods, setLang, requestOtp, verifyOtp, logout, refreshUser, updateConsents }}
     >
       {children}
     </AppContext.Provider>

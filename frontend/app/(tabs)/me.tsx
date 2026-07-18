@@ -38,7 +38,7 @@ export default function Me() {
     <Screen>
       <ScrollView contentContainerStyle={styles.wrap} showsVerticalScrollIndicator={false}>
         <Display style={styles.h}>{user?.name}</Display>
-        <AppText style={styles.email}>{user?.email}</AppText>
+        <AppText style={styles.email}>{user?.phone}{user?.email ? ` · ${user.email}` : ""}</AppText>
 
         {/* Privacy center */}
         <Card tint="#F5E9D8" style={{ marginTop: spacing.lg }}>

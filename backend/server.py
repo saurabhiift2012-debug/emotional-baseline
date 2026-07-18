@@ -579,12 +579,146 @@ async def login(body: LoginIn):
 def _public_user(u: dict) -> dict:
     return {
         "id": str(u['_id']),
-        "email": u['email'],
+        "phone": u.get('phone'),
+        "email": u.get('email'),
         "name": u.get('name', 'there'),
         "language": u.get('language', 'en'),
         "consents": u.get('consents', {}),
         "health_connected": u.get('health_connected', {}),
     }
+
+
+def _default_consents() -> dict:
+    on_by_default = {"mood_history", "health_data", "sleep_data", "activity_data",
+                     "heart_data", "personal_insights"}
+    return {k: (k in on_by_default) for k in CONSENT_KEYS}
+
+
+def _norm_phone(phone: str) -> str:
+    p = "".join(ch for ch in (phone or "") if ch.isdigit() or ch == "+")
+    return p
+
+
+def _validate_18(dob_str: str):
+    try:
+        dob = datetime.strptime(dob_str, "%Y-%m-%d").date()
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=400, detail="Date of birth must be YYYY-MM-DD")
+    today = date.today()
+    age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+    if age < 18:
+        raise HTTPException(status_code=403, detail="You must be 18 or older to use TherapiShots.")
+
+
+class RequestOtpIn(BaseModel):
+    phone: str
+    mode: str = "login"  # "login" | "register"
+    name: Optional[str] = None
+    date_of_birth: Optional[str] = None
+    email: Optional[str] = None
+    language: str = "en"
+
+
+class VerifyOtpIn(BaseModel):
+    phone: str
+    code: str
+
+
+def mock_send_sms(phone: str, code: str):
+    # Swap this single function for Twilio later. Modular by design.
+    logger.info(f"[MOCK SMS] to {phone}: Your TherapiShots code is {code}")
+
+
+@api_router.post("/auth/request-otp")
+async def request_otp(body: RequestOtpIn):
+    phone = _norm_phone(body.phone)
+    if len(phone.replace("+", "")) < 8:
+        raise HTTPException(status_code=400, detail="Please enter a valid mobile number.")
+    existing = await db.users.find_one({"phone": phone})
+    pending = None
+    if body.mode == "register":
+        if existing:
+            raise HTTPException(status_code=400, detail="This mobile number is already registered. Please log in.")
+        if not body.name or not body.date_of_birth:
+            raise HTTPException(status_code=400, detail="Name and date of birth are required.")
+        _validate_18(body.date_of_birth)
+        pending = {
+            "name": body.name.strip() or "there",
+            "date_of_birth": body.date_of_birth,
+            "email": (body.email or "").strip().lower() or None,
+            "language": body.language,
+        }
+    else:  # login
+        if not existing:
+            raise HTTPException(status_code=404, detail="No account found for this number. Please register.")
+
+    # basic rate limit: 20s cooldown between sends
+    prior = await db.otps.find_one({"phone": phone})
+    if prior:
+        try:
+            sent = datetime.fromisoformat(prior.get("sent_at"))
+            if (datetime.now(timezone.utc) - sent).total_seconds() < 20:
+                raise HTTPException(status_code=429, detail="Please wait a few seconds before requesting another code.")
+        except HTTPException:
+            raise
+        except Exception:
+            pass
+
+    code = f"{random.randint(0, 999999):06d}"
+    now = datetime.now(timezone.utc)
+    await db.otps.update_one(
+        {"phone": phone},
+        {"$set": {"code": code, "expires_at": (now + timedelta(minutes=5)).isoformat(),
+                  "sent_at": now.isoformat(), "attempts": 0, "pending": pending}},
+        upsert=True,
+    )
+    mock_send_sms(phone, code)
+    # DEV ONLY: return the code so it can be shown in-app (no SMS provider yet)
+    return {"message": "Verification code sent.", "dev_code": code, "mock": True}
+
+
+@api_router.post("/auth/verify-otp")
+async def verify_otp(body: VerifyOtpIn):
+    phone = _norm_phone(body.phone)
+    rec = await db.otps.find_one({"phone": phone})
+    if not rec:
+        raise HTTPException(status_code=400, detail="Code expired or not found. Please request a new one.")
+    try:
+        if datetime.fromisoformat(rec["expires_at"]) < datetime.now(timezone.utc):
+            await db.otps.delete_one({"_id": rec["_id"]})
+            raise HTTPException(status_code=400, detail="Code expired. Please request a new one.")
+    except HTTPException:
+        raise
+    except Exception:
+        pass
+    if rec.get("attempts", 0) >= 5:
+        await db.otps.delete_one({"_id": rec["_id"]})
+        raise HTTPException(status_code=429, detail="Too many attempts. Please request a new code.")
+    if rec["code"] != body.code.strip():
+        await db.otps.update_one({"_id": rec["_id"]}, {"$inc": {"attempts": 1}})
+        raise HTTPException(status_code=401, detail="Incorrect code. Please try again.")
+
+    user = await db.users.find_one({"phone": phone})
+    if not user:
+        pending = rec.get("pending") or {}
+        doc = {
+            "phone": phone,
+            "email": pending.get("email"),
+            "name": pending.get("name", "there"),
+            "date_of_birth": pending.get("date_of_birth"),
+            "language": pending.get("language", "en"),
+            "consents": _default_consents(),
+            "consent_version": 1,
+            "health_connected": {"sleep": True, "activity": True, "steps": True, "heart": True},
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+        res = await db.users.insert_one(doc)
+        uid = str(res.inserted_id)
+        await seed_history(uid)
+        user = await db.users.find_one({"_id": res.inserted_id})
+    await db.otps.delete_one({"_id": rec["_id"]})
+    token = create_token(str(user['_id']))
+    return {"token": token, "user": _public_user(user)}
 
 
 @api_router.get("/auth/me")
@@ -1043,6 +1177,23 @@ def uuid_hex():
 @app.on_event("startup")
 async def _startup_seed():
     await seed_psychologists()
+    try:
+        await db.users.create_index("phone", unique=True, sparse=True)
+    except Exception:
+        pass
+    # Demo phone account for OTP testing (idempotent)
+    demo_phone = "+919999900000"
+    existing = await db.users.find_one({"phone": demo_phone})
+    if not existing:
+        doc = {
+            "phone": demo_phone, "email": None, "name": "Demo",
+            "date_of_birth": "1995-01-01", "language": "en",
+            "consents": _default_consents(), "consent_version": 1,
+            "health_connected": {"sleep": True, "activity": True, "steps": True, "heart": True},
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+        res = await db.users.insert_one(doc)
+        await seed_history(str(res.inserted_id))
 
 
 
