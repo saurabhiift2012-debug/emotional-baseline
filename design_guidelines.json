@@ -1,0 +1,124 @@
+{
+  "app_name": "TherapiShots",
+  "personality": "8 Hand-Drawn / Journal LIGHT",
+  "personality_one_liner": "A warm, deeply personal, and reflective space that feels like a premium private journal, favoring gentle empathy over clinical utility.",
+  "color": {
+    "surface": "#FAF7F2",
+    "onSurface": "#2C2416",
+    "surfaceSecondary": "#F2EBE1",
+    "onSurfaceSecondary": "#6B5C47",
+    "surfaceTertiary": "#E8DFC9",
+    "onSurfaceTertiary": "#6B5C47",
+    "surfaceInverse": "#2C2416",
+    "onSurfaceInverse": "#FAF7F2",
+    "brand": "#3D4F7C",
+    "brandPrimary": "#D4A574",
+    "onBrandPrimary": "#2C2416",
+    "brandSecondary": "#3D4F7C",
+    "onBrandSecondary": "#FAF7F2",
+    "brandTertiary": "#8BAF8C",
+    "onBrandTertiary": "#2C2416",
+    "success": "#8BAF8C",
+    "onSuccess": "#2C2416",
+    "warning": "#C9897A",
+    "onWarning": "#2C2416",
+    "error": "#C9897A",
+    "onError": "#2C2416",
+    "info": "#3D4F7C",
+    "onInfo": "#FAF7F2",
+    "border": "#E8DFC9",
+    "borderStrong": "#D4A574",
+    "divider": "#E8DFC9"
+  },
+  "typography": {
+    "displayFontFamily": "Fraunces",
+    "textFontFamily": "DM Sans",
+    "scale": { "sm": 12, "base": 14, "lg": 16, "xl": 20, "2xl": 24 }
+  },
+  "spacing": { 
+    "rule": "Generous journal-like vertical spacing, soft padding. Do not cram elements. Allow whitespace to serve as a restorative pause.", 
+    "xs": 4, "sm": 8, "md": 12, "lg": 16, "xl": 24, "2xl": 32, "3xl": 48 
+  },
+  "radius_tokens": { "sm": 6, "md": 12, "lg": 20, "pill": 999 },
+  "shadow_tier": "0",
+  "navigation": "bottom_tabs",
+  "icon_set": "Feather",
+  "glassmorphism": {
+    "enabled": "false",
+    "do's": ["Skip glass effects completely. This personality relies on solid paper tones and tactile softness, not digital blur."],
+    "dont's": ["Do not use expo-blur. It clashes with the warm, hand-drawn, journal-like brief."]
+  },
+  "platform_libraries": {
+    "glass": {
+      "ios": "expo-glass-effect",
+      "android": "expo-blur",
+      "low_end_android_fallback": "solid surfaceSecondary"
+    },
+    "image": "expo-image",
+    "blur": "expo-blur",
+    "bottom_sheet": "@gorhom/bottom-sheet",
+    "animation": "react-native-reanimated",
+    "gesture": "react-native-gesture-handler"
+  },
+  "screens": [
+    { 
+      "name": "Today", 
+      "purpose": "The daily landing pad: soft greeting, health signals, and a gentle prompt to check-in.", 
+      "states": { 
+        "loading": "Centered soft spinner in brandPrimary.", 
+        "empty": "Warm welcome message with a prominent CTA to log the first mood.", 
+        "error": "Gentle error text 'Something went out of sync' + Retry button." 
+      },
+      "layout": "Top: 'How are you feeling today?' banner (surfaceSecondary bg) that opens Check-in Flow. Middle: 'Wellbeing Pulse' soft cards showing sleep/activity vs baseline. Bottom: 'One small step' suggestion card (brandTertiary accent). Use lg/xl spacing between sections." 
+    },
+    { 
+      "name": "CheckIn Flow", 
+      "purpose": "The core daily loop featuring the expressive visual mood selector.", 
+      "states": { "loading": "None", "empty": "None", "error": "None" },
+      "layout": "Full screen stack flow. Step 1: Visual Mood Selector (Hero). A grid of 6-9 animated, expressive emoji mood tiles. Grouped subtly but NOT color-coded good/bad. Step 2: 'Mood Context' pill-shaped chips (Sleep, Work, Family). Step 3: 'Does this feel true for you?' gentle observation based on recent data. Bottom sticky primary CTA in Amber." 
+    },
+    { 
+      "name": "Insights", 
+      "purpose": "Answers 'What seems to affect how I feel?' with pattern recognition.", 
+      "states": { 
+        "loading": "Skeleton text lines.", 
+        "empty": "Illustration of a soft notebook. Text: 'As you check in, patterns will gently emerge here.'", 
+        "error": "Gentle retry prompt." 
+      },
+      "layout": "Vertical scroll of 'Observation' cards. Each card uses surfaceSecondary with a 'Confidence Badge' (pill shape) at the top: Sage for Early Signal, Amber for Emerging Pattern, Indigo for Consistent Pattern. Large Fraunces typography for the insight text." 
+    },
+    { 
+      "name": "Progress", 
+      "purpose": "Shows trends and non-punitive check-in history.", 
+      "states": { "loading": "Spinner", "empty": "Illustration of a blank canvas.", "error": "Retry." },
+      "layout": "Top: Calendar 'Feel Map' showing check-ins as subtle dots. Middle: Soft rounded bar charts for sleep/activity. Emphasize total check-ins (e.g., '14 days this month') instead of unbroken streaks. No red punitive warnings." 
+    },
+    { 
+      "name": "Support", 
+      "purpose": "Low-mood journey and professional help options.", 
+      "states": { "loading": "Spinner", "empty": "None", "error": "Retry." },
+      "layout": "Warm, highly empathetic layout. Top: 'Take a breath' animated breathing circle. Below: Emergency contacts, links to psychologist support (locked/later). Calm Sage and Indigo colors dominant here." 
+    },
+    { 
+      "name": "Me", 
+      "purpose": "Privacy settings and profile.", 
+      "states": { "loading": "Spinner", "empty": "None", "error": "Retry." },
+      "layout": "Simple vertical list with Feather chevrons. Privacy & Consent center prominently featured at the top in an Amber-tinted card." 
+    }
+  ],
+  "images": {
+    "hero_morning": { "url": "https://images.pexels.com/photos/8354528/pexels-photo-8354528.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940", "alt": "Morning light shadow minimal" },
+    "empty_insights": { "url": "https://images.pexels.com/photos/8071781/pexels-photo-8071781.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940", "alt": "Soft notebook pages empty" },
+    "support_banner": { "url": "https://images.pexels.com/photos/36078805/pexels-photo-36078805.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940", "alt": "Calm abstract watercolor texture" }
+  },
+  "instructions_to_main_agent": [
+    "EXPLICIT EXCEPTION: The user verbatim requested 'animated emoji mood tiles in a grid'. Therefore, DO USE EMOJIS for the mood selector grid. Animate them on press using react-native-reanimated. Do not color-code them Red/Green. Use the neutral brand palette.",
+    "Strict color palette enforcement: Use ONLY the provided colors. Deep Indigo (#3D4F7C), Warm Amber (#D4A574), Sage (#8BAF8C), Muted Rose (#C9897A), Warm Ivory (#FAF7F2). Do NOT use generic blue, green, or red for any UI components.",
+    "Typography: Use Fraunces for headings/display and DM Sans for body. Keep weights under 500 to maintain the soft, premium editorial feel.",
+    "Design structure: Base everything on '8 Hand-Drawn / Journal LIGHT'. This means no hard shadows, no heavy borders, and NO glassmorphism. Rely on surfaceSecondary (#F2EBE1) for cards to separate from the surface (#FAF7F2) background.",
+    "Insight Confidence Badges: Implement these as pill-shaped chips inside cards. Use Sage (brandTertiary bg/onBrandTertiary text) for Early Signal, Amber (brandPrimary bg) for Emerging Pattern, and Indigo (brandSecondary bg) for Consistent Pattern.",
+    "Progress Screen: Design non-punitive streaks. Say '14 days checked in this month' rather than '0 day streak'. No warning/error colors for missed days.",
+    "Check-In Flow: Ensure the 'One small step' cards use Amber as the CTA to drive 'Human actions' as requested.",
+    "Haptics: Add haptics when selecting an emoji in the grid, selecting a context chip, and completing a check-in."
+  ]
+}
