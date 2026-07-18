@@ -1,0 +1,30 @@
+{
+  "summary": "TherapiShots increment E2E PASSED. Backend: 34/34 pytest pass — covers config, auth (18+ gate, short-pw, dup, login, /me, invalid token, demo user login), check-ins with NEW multiple-per-day behaviour (todays_count increments, todays_entries list ordered by created_at, todays_mood reflects LATEST), today/insights (daily_moods has 7 items with last-of-day mood)/pulse/progress, NEW psychologists (list, language filter, detail with availability slots, 404), NEW bookings (mock payment paid+MOCK- txn id, invalid slot 400, invalid session_type 400, invalid psych 404, list, cancel sets status cancelled, cancel-missing 404), and auth enforcement across 6 protected endpoints incl. /psychologists & /bookings. Frontend (Expo web preview @ EXPO_PUBLIC_BACKEND_URL, mobile viewport 390x844): demo login works, Today screen inline MoodSelector renders in EXACTLY 3 columns (bounding-box x=[40,148,255]), all 9 mood tiles present, tapping a mood quick-logs a check-in (todays_count goes 1->2 in body), Today's check-ins card lists entries with times, 'Add a note or context' button visible, Insights 'Your last 7 days' mood strip renders with 7 daily-mood entries + emoji per day, Support -> Find a psychologist lists 4 cards, tapping a card opens detail with session-type chips + 19 slots, selecting Video + first slot + 'Confirm & pay' shows 'Your session is confirmed' with 'Paid (mock)' label, View my appointments lists the booking, Cancel booking flips status to 'Cancelled'.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Card (todays-entries / quicklog-saved)", "issue": "The custom <Card> component appears to NOT forward the testID prop to its underlying View — so [data-testid=\"todays-entries\"] and [data-testid=\"quicklog-saved\"] return 0 nodes in DOM even though the elements render visually. Purely cosmetic (testing-only) issue; user-visible behaviour is correct. Reference: /app/frontend/app/(tabs)/index.tsx:72, 87.", "testID": "todays-entries, quicklog-saved", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_therapishots_api.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "OPTIONAL LOW-PRIORITY: Ensure the custom <Card> component forwards `testID` to its root <View> so automated tests can select [data-testid=\"todays-entries\"] and [data-testid=\"quicklog-saved\"]. All user-facing behaviour already works correctly."
+  ],
+  "critical_code_review_comments": [
+    "server.py: multiple check-ins per day are now correctly appended (db.checkins.insert_one) and /api/today returns todays_entries sorted by created_at asc + todays_mood = last entry. Matches the spec exactly.",
+    "server.py L950-967: /api/psychologists correctly renames Mongo `_id` to `id` and drops _id from response (no ObjectId leakage).",
+    "server.py L983-1015: /api/bookings mock payment is clearly labelled (provider=mock, MOCK- prefixed transaction_id, disclaimer 'Simulated payment — no real charge'). Server-side stub only — good.",
+    "server.py L927-939: gen_availability is deterministic per psychologist slug — so slot IDs are stable between GET /psychologists/{id} and POST /bookings. Good design for the mock flow.",
+    "MoodSelector.tsx L48: cols=3 hardcoded and horizontal padding math produces 3-column layout on mobile viewport (verified via bounding boxes)."
+  ],
+  "updated_files": ["/app/backend/tests/test_therapishots_api.py (rewrote to cover psychologists, bookings, multiple check-ins/day, daily_moods)"],
+  "success_rate": {"backend": "100% (34/34)", "frontend": "100% of tested flows (Today inline mood grid, quick-log, Insights 7-day strip, Support -> Psychologists -> detail -> Confirm&pay -> Appointments -> Cancel)"},
+  "seed_data_creation": "Registration auto-seeds ~42 days of correlated mood+health history per new user. Startup hook seeds 4 demo psychologists into db.psychologists (idempotent). Test fixture creates a fresh test_<uuid>@therapishots.app user per session — demo user is not modified. During frontend test, 2 bookings were created for demo@therapishots.app then 1 was cancelled (leaves 1 confirmed + 1 cancelled).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Env var is EXPO_PUBLIC_BACKEND_URL (not EXPO_BACKEND_URL). Multiple check-ins per day are now intentional — do NOT assert 'replace' behaviour. /api/today.todays_entries is ordered by created_at asc and todays_mood = last entry. /api/insights.daily_moods is a fixed 7-item array (oldest first, today last), mood may be null for empty days. Psychologist IDs are Mongo ObjectIds from db.psychologists. Slot IDs are deterministic per slug (format YYYY-MM-DDTHH:00) — regenerate via GET /psychologists/{id} before booking (do not cache across days). Payment is MOCKED server-side (provider='mock'). Demo user demo@therapishots.app / secret123 already has bookings from this run — factor into any list-count assertions.",
+  "rca_of_issue": "N/A — no blocking issues found. The only observation is a minor testID-forwarding gap in the custom <Card> component, which does not affect users."
+}

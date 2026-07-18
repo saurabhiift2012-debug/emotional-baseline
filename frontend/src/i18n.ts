@@ -154,6 +154,41 @@ export const STR: Dict = {
   c_marketing: { en: "Marketing Communications", hi: "मार्केटिंग संचार" },
 
   not_medical: { en: "TherapiShots is a self-reflection tool. It does not diagnose or provide medical advice.", hi: "TherapiShots एक आत्म-चिंतन उपकरण है। यह निदान या चिकित्सा सलाह नहीं देता।" },
+
+  // multiple check-ins / today entries
+  add_detail: { en: "Add a note or context", hi: "टिप्पणी या संदर्भ जोड़ें" },
+  todays_checkins_title: { en: "Today's check-ins", hi: "आज के चेक-इन" },
+  multi_note: { en: "You can check in whenever you like — every moment counts.", hi: "आप जब चाहें चेक-इन कर सकते हैं — हर पल मायने रखता है।" },
+  tap_mood_hint: { en: "Tap how you feel to check in", hi: "चेक-इन करने के लिए अपनी भावना पर टैप करें" },
+  checkin_again: { en: "Feeling different? Check in again", hi: "अलग महसूस हो रहा है? फिर से चेक-इन करें" },
+  entries_count: { en: "check-in(s) today", hi: "आज चेक-इन" },
+
+  // insights daily strip
+  last7_days: { en: "Your last 7 days", hi: "आपके पिछले 7 दिन" },
+
+  // booking
+  psychologists_title: { en: "Find a psychologist", hi: "मनोवैज्ञानिक खोजें" },
+  filter_language: { en: "Language", hi: "भाषा" },
+  filter_all: { en: "All", hi: "सभी" },
+  verified: { en: "Verified", hi: "सत्यापित" },
+  years_exp: { en: "yrs experience", hi: "वर्ष अनुभव" },
+  per_session: { en: "per session", hi: "प्रति सत्र" },
+  specializes_in: { en: "Specializes in", hi: "विशेषज्ञता" },
+  languages_label: { en: "Languages", hi: "भाषाएँ" },
+  book_session: { en: "Book a session", hi: "सत्र बुक करें" },
+  choose_slot: { en: "Choose a time", hi: "समय चुनें" },
+  session_type_label: { en: "Session type", hi: "सत्र प्रकार" },
+  confirm_pay: { en: "Confirm & pay", hi: "पुष्टि करें और भुगतान करें" },
+  payment_mock_note: { en: "Payment is simulated for now — no real charge is made.", hi: "फ़िलहाल भुगतान नकली है — कोई वास्तविक शुल्क नहीं लिया जाता।" },
+  booking_confirmed: { en: "Your session is confirmed", hi: "आपका सत्र पुष्टि हो गया है" },
+  appointments_title: { en: "My appointments", hi: "मेरी अपॉइंटमेंट" },
+  no_appointments: { en: "No appointments yet.", hi: "अभी कोई अपॉइंटमेंट नहीं।" },
+  cancel_booking: { en: "Cancel booking", hi: "बुकिंग रद्द करें" },
+  status_confirmed: { en: "Confirmed", hi: "पुष्टि" },
+  status_cancelled: { en: "Cancelled", hi: "रद्द" },
+  view_appointments: { en: "View my appointments", hi: "मेरी अपॉइंटमेंट देखें" },
+  test_data_note: { en: "Profiles shown are demo/test data.", hi: "दिखाए गए प्रोफ़ाइल डेमो/परीक्षण डेटा हैं।" },
+  paid: { en: "Paid", hi: "भुगतान किया" },
   loading: { en: "Loading…", hi: "लोड हो रहा है…" },
   retry: { en: "Retry", hi: "पुनः प्रयास" },
   error_sync: { en: "Something went out of sync", hi: "कुछ सिंक से बाहर हो गया" },

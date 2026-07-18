@@ -6,7 +6,8 @@ import * as Haptics from "expo-haptics";
 import { useApp } from "@/src/AppContext";
 import { api } from "@/src/api";
 import { moodByKey } from "@/src/moods";
-import { Screen, Display, AppText, Card, SectionTitle, Loading, PrimaryButton, colors, spacing, radius, font, T } from "@/src/ui";
+import { MoodSelector } from "@/src/MoodSelector";
+import { Screen, Display, AppText, Card, SectionTitle, Loading, colors, spacing, radius, font, T } from "@/src/ui";
 
 export default function Today() {
   const { t, lang, moods, user } = useApp();
@@ -14,6 +15,7 @@ export default function Today() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [justSaved, setJustSaved] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -28,10 +30,19 @@ export default function Today() {
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
+  const quickLog = async (mood: string) => {
+    try {
+      await api.post("/checkins", { mood, context: [], note: null, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC" });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setJustSaved(true);
+      setTimeout(() => setJustSaved(false), 2200);
+      await load();
+    } catch {}
+  };
+
   if (loading) return <Screen><Loading /></Screen>;
 
   const greetKey = data?.greeting === "morning" ? "good_morning" : data?.greeting === "afternoon" ? "good_afternoon" : "good_evening";
-  const todaysMood = moodByKey(data?.todays_mood, moods);
   const s = data?.signals || {};
   const step = data?.small_step;
 
@@ -51,28 +62,52 @@ export default function Today() {
         <AppText style={styles.greet}>{t(greetKey)},</AppText>
         <Display style={styles.name}>{data?.name || user?.name} 🌿</Display>
 
-        {/* Check-in banner */}
-        <Pressable testID="checkin-banner" onPress={() => router.push("/checkin")} style={styles.banner}>
-          {data?.checked_in_today && todaysMood ? (
-            <View style={styles.bannerRow}>
-              <Text style={styles.bannerEmoji}>{todaysMood.emoji}</Text>
-              <View style={{ flex: 1 }}>
-                <AppText style={styles.bannerSmall}>{t("checked_in")}</AppText>
-                <Display style={styles.bannerMood}>{lang === "hi" ? todaysMood.hi : todaysMood.en}</Display>
-              </View>
-              <Feather name="edit-2" size={18} color={colors.onSurfaceSecondary} />
+        {/* Prominent inline mood check-in — shown every time the app opens */}
+        <View style={styles.hero} testID="today-mood-hero">
+          <Display style={styles.bannerQ}>{t("how_feeling")}</Display>
+          <AppText style={styles.heroHint}>
+            {data?.todays_count ? t("checkin_again") : t("tap_mood_hint")}
+          </AppText>
+          {justSaved ? (
+            <View style={styles.savedPill} testID="quicklog-saved">
+              <Feather name="check" size={14} color={colors.onSurface} />
+              <AppText style={styles.savedPillText}>{t("thanks_checkin")}</AppText>
             </View>
-          ) : (
-            <View style={styles.bannerRow}>
-              <View style={{ flex: 1 }}>
-                <Display style={styles.bannerQ}>{t("how_feeling")}</Display>
-              </View>
-              <View style={styles.bannerCta}>
-                <Feather name="plus" size={22} color={colors.onSurface} />
+          ) : null}
+          <View style={{ height: spacing.md }} />
+          <MoodSelector moods={moods} value={null} onChange={quickLog} lang={lang} pad={spacing.xl * 2 + spacing.lg * 2} />
+          <Pressable testID="add-detail-button" onPress={() => router.push("/checkin")} style={styles.addDetail}>
+            <Feather name="edit-3" size={16} color={colors.indigo} />
+            <AppText style={styles.addDetailText}>{t("add_detail")}</AppText>
+          </Pressable>
+        </View>
+
+        {/* Today's check-in entries (multiple per day allowed) */}
+        {data?.todays_entries?.length ? (
+          <Card style={{ marginTop: spacing.lg }} testID="todays-entries">
+            <View style={styles.entriesHead}>
+              <SectionTitle style={{ fontSize: T.lg, marginBottom: 0 }}>{t("todays_checkins_title")}</SectionTitle>
+              <View style={styles.countPill}>
+                <AppText style={styles.countPillText}>{data.todays_count} {t("entries_count")}</AppText>
               </View>
             </View>
-          )}
-        </Pressable>
+            {data.todays_entries.map((e: any, i: number) => {
+              const m = moodByKey(e.mood, moods);
+              return (
+                <View key={i} style={[styles.entryRow, i < data.todays_entries.length - 1 && styles.entryDivider]}>
+                  <Text style={styles.entryEmoji}>{m?.emoji}</Text>
+                  <View style={{ flex: 1 }}>
+                    <AppText style={styles.entryMood}>{m ? (lang === "hi" ? m.hi : m.en) : e.mood}</AppText>
+                    {e.note ? <AppText style={styles.entryNote}>{e.note}</AppText> : null}
+                    {e.context?.length ? <AppText style={styles.entryCtx}>{e.context.map((c: string) => t(`ctx_${c}`)).join(" · ")}</AppText> : null}
+                  </View>
+                  <AppText style={styles.entryTime}>{fmtTime(e.created_at)}</AppText>
+                </View>
+              );
+            })}
+            <AppText style={styles.multiNote}>{t("multi_note")}</AppText>
+          </Card>
+        ) : null}
 
         {/* Repeated low mood gentle banner */}
         {data?.low_mood_journey?.repeated_low && (
@@ -154,11 +189,38 @@ function fmtSleep(min?: number) {
   return `${h}h ${m}m`;
 }
 
+function fmtTime(iso?: string) {
+  if (!iso) return "";
+  try {
+    const d = new Date(iso);
+    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  } catch {
+    return "";
+  }
+}
+
 const styles = StyleSheet.create({
   wrap: { paddingHorizontal: spacing.xl, paddingTop: spacing.md },
   greet: { color: colors.onSurfaceSecondary, fontSize: T.lg },
   name: { fontSize: 28, marginTop: 2 },
   banner: { backgroundColor: colors.surfaceSecondary, borderRadius: radius.lg, padding: spacing.lg, marginTop: spacing.lg },
+  hero: { backgroundColor: colors.surfaceSecondary, borderRadius: radius.lg, padding: spacing.lg, marginTop: spacing.lg },
+  heroHint: { color: colors.onSurfaceSecondary, fontSize: T.base, marginTop: 4 },
+  savedPill: { flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start", backgroundColor: "#E7EEE3", borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: 6, marginTop: spacing.sm },
+  savedPillText: { color: colors.onSurface, fontSize: T.sm, fontWeight: "600" },
+  addDetail: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, marginTop: spacing.sm, height: 44 },
+  addDetailText: { color: colors.indigo, fontWeight: "600", fontSize: T.base },
+  entriesHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: spacing.md },
+  countPill: { backgroundColor: colors.surface, borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: 4 },
+  countPillText: { color: colors.onSurfaceSecondary, fontSize: T.sm, fontWeight: "500" },
+  entryRow: { flexDirection: "row", alignItems: "center", gap: spacing.md, paddingVertical: spacing.md },
+  entryDivider: { borderBottomWidth: 1, borderBottomColor: colors.border },
+  entryEmoji: { fontSize: 28 },
+  entryMood: { fontSize: T.lg, color: colors.onSurface, fontWeight: "500" },
+  entryNote: { fontSize: T.sm, color: colors.onSurfaceSecondary, marginTop: 2 },
+  entryCtx: { fontSize: T.sm, color: colors.indigo, marginTop: 2 },
+  entryTime: { fontSize: T.sm, color: colors.onSurfaceSecondary },
+  multiNote: { fontSize: T.sm, color: colors.onSurfaceSecondary, fontStyle: "italic", marginTop: spacing.md },
   bannerRow: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   bannerQ: { fontSize: 22, lineHeight: 28 },
   bannerCta: { width: 48, height: 48, borderRadius: 24, backgroundColor: colors.amber, alignItems: "center", justifyContent: "center" },

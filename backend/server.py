@@ -272,14 +272,23 @@ async def seed_history(user_id: str, days: int = 42):
 # Analytics: personal baseline + deterministic pattern engine
 # ----------------------------------------------------------------------------
 async def load_frames(user_id: str):
-    checkins = await db.checkins.find({"user_id": user_id}).sort("date", 1).to_list(1000)
+    raw = await db.checkins.find({"user_id": user_id}).sort("date", 1).to_list(2000)
     healths = await db.health_days.find({"user_id": user_id}).sort("date", 1).to_list(1000)
-    for c in checkins:
+    for c in raw:
         c.pop('_id', None)
     for h in healths:
         h.pop('_id', None)
+    checkins = _last_per_day(raw)  # analytics use one representative mood per day
     health_by_date = {h['date']: h for h in healths}
     return checkins, healths, health_by_date
+
+
+def _last_per_day(checkins):
+    """Keep the LAST-selected check-in per calendar day (by created_at)."""
+    by_day = {}
+    for c in sorted(checkins, key=lambda x: (x['date'], x.get('created_at', ''))):
+        by_day[c['date']] = c
+    return [by_day[d] for d in sorted(by_day.keys())]
 
 
 def _pearson(x, y):
@@ -649,13 +658,17 @@ async def create_checkin(body: CheckinIn, user: dict = Depends(get_current_user)
         "timezone": body.timezone,
         "created_at": now.isoformat(), "seeded": False,
     }
-    # one check-in per day: replace today's if present
-    await db.checkins.delete_many({"user_id": user['id'], "date": today, "seeded": False})
+    # Allow multiple check-ins per day — each selection is its own entry.
     await db.checkins.insert_one(dict(doc))
-    await ensure_health_day(user['id'], today, m['value'])
+    # health for the day reflects the latest mood
+    existing_hd = await db.health_days.find_one({"user_id": user['id'], "date": today})
+    if not existing_hd:
+        await ensure_health_day(user['id'], today, m['value'])
     doc.pop('_id', None)
+    # count today's entries for the response
+    todays_count = await db.checkins.count_documents({"user_id": user['id'], "date": today})
     return {"checkin": doc, "message": "Thanks for checking in.",
-            "low_mood": m['value'] <= 2}
+            "low_mood": m['value'] <= 2, "todays_count": todays_count}
 
 
 @api_router.get("/checkins/today")
@@ -706,11 +719,21 @@ async def today(user: dict = Depends(get_current_user)):
     observation = today_observation(checkins, hbd) if user.get('consents', {}).get('personal_insights', True) else None
     hour = datetime.now().hour
     greeting = "morning" if hour < 12 else "afternoon" if hour < 18 else "evening"
+    # all of today's raw entries (multiple check-ins per day are allowed)
+    raw_today = await db.checkins.find({"user_id": uid, "date": today_str}).sort("created_at", 1).to_list(50)
+    todays_entries = [{
+        "mood": c['mood'], "group": c.get('group'),
+        "created_at": c.get('created_at'),
+        "context": c.get('context', []), "note": c.get('note'),
+    } for c in raw_today]
+    latest = raw_today[-1] if raw_today else None
     return {
         "greeting": greeting,
         "name": user.get('name', 'there'),
-        "checked_in_today": todays is not None,
-        "todays_mood": todays['mood'] if todays else None,
+        "checked_in_today": len(raw_today) > 0,
+        "todays_mood": latest['mood'] if latest else None,
+        "todays_entries": todays_entries,
+        "todays_count": len(raw_today),
         "signals": signals,
         "observation": observation,
         "small_step": pick_small_step(last_value),
@@ -723,7 +746,20 @@ async def insights(user: dict = Depends(get_current_user)):
     checkins, healths, hbd = await load_frames(user['id'])
     baseline = compute_baseline(checkins, healths)
     data = build_insights(checkins, hbd) if len(checkins) >= 7 else {"helps": [], "harder": [], "notice": [], "context": []}
-    return {"insights": data, "baseline": baseline, "checkin_count": len(checkins)}
+    # Last 7 days daily mood (using the LAST-selected mood of each day)
+    by_date = {c['date']: c for c in checkins}
+    today = date.today()
+    daily_moods = []
+    for i in range(6, -1, -1):
+        d = (today - timedelta(days=i)).isoformat()
+        c = by_date.get(d)
+        daily_moods.append({
+            "date": d,
+            "mood": c['mood'] if c else None,
+            "group": c.get('group') if c else None,
+        })
+    return {"insights": data, "baseline": baseline, "checkin_count": len(checkins),
+            "daily_moods": daily_moods}
 
 
 @api_router.get("/pulse")
@@ -849,6 +885,166 @@ async def _ai_polish(facts: dict, pseudo_id: str) -> Optional[str]:
     except Exception as e:
         logger.warning(f"AI polish failed: {e}")
         return None
+
+# ----------------------------------------------------------------------------
+# Professional support: psychologist discovery + booking (mock payment)
+# NOTE: psychologists below are clearly-labelled DEMO/TEST data.
+# ----------------------------------------------------------------------------
+DEMO_PSYCHOLOGISTS = [
+    {"slug": "ananya-rao", "name": "Dr. Ananya Rao", "verified": True,
+     "qualifications": "PhD Clinical Psychology", "specializations": ["Anxiety", "Stress", "Sleep"],
+     "languages": ["English", "Hindi"], "experience_years": 11,
+     "session_types": ["Video", "Chat"], "price": 1200, "currency": "INR",
+     "bio": "Warm, evidence-based support for anxiety, stress and sleep difficulties."},
+    {"slug": "vikram-menon", "name": "Dr. Vikram Menon", "verified": True,
+     "qualifications": "MPhil Clinical Psychology", "specializations": ["Relationships", "Work stress", "Low mood"],
+     "languages": ["English"], "experience_years": 8,
+     "session_types": ["Video"], "price": 1500, "currency": "INR",
+     "bio": "Helps people navigate relationships, burnout and work-related stress."},
+    {"slug": "sara-iyer", "name": "Ms. Sara Iyer", "verified": True,
+     "qualifications": "MA Counselling Psychology", "specializations": ["Self-esteem", "Anxiety", "Life transitions"],
+     "languages": ["English", "Hindi"], "experience_years": 6,
+     "session_types": ["Video", "Chat"], "price": 900, "currency": "INR",
+     "bio": "A gentle, collaborative approach for self-esteem and life changes."},
+    {"slug": "rohit-kulkarni", "name": "Dr. Rohit Kulkarni", "verified": False,
+     "qualifications": "PsyD", "specializations": ["Sleep", "Mindfulness", "Stress"],
+     "languages": ["English", "Hindi", "Marathi"], "experience_years": 4,
+     "session_types": ["Chat"], "price": 700, "currency": "INR",
+     "bio": "Focuses on mindfulness and sleep hygiene for everyday stress."},
+]
+
+
+async def seed_psychologists():
+    count = await db.psychologists.count_documents({})
+    if count > 0:
+        return
+    docs = []
+    for p in DEMO_PSYCHOLOGISTS:
+        docs.append({**p, "is_demo": True, "created_at": datetime.now(timezone.utc).isoformat()})
+    await db.psychologists.insert_many(docs)
+
+
+def gen_availability(slug: str):
+    """Deterministic upcoming slots for the next 7 days."""
+    rng = random.Random(f"avail:{slug}")
+    slots = []
+    now = datetime.now()
+    for day in range(1, 8):
+        d = (now + timedelta(days=day)).date()
+        hours = sorted(rng.sample([10, 11, 12, 15, 16, 17, 18, 19], k=rng.randint(2, 4)))
+        for h in hours:
+            slots.append({"id": f"{d.isoformat()}T{h:02d}:00",
+                          "date": d.isoformat(), "time": f"{h:02d}:00",
+                          "label": d.strftime("%a %d %b") + f" · {h:02d}:00"})
+    return slots
+
+
+class BookingIn(BaseModel):
+    psychologist_id: str
+    slot_id: str
+    session_type: str
+    # mock payment token — real verification happens server-side with a provider later
+    payment_token: Optional[str] = "mock"
+
+
+@api_router.get("/psychologists")
+async def list_psychologists(language: Optional[str] = None,
+                             specialization: Optional[str] = None,
+                             session_type: Optional[str] = None,
+                             user: dict = Depends(get_current_user)):
+    q: dict = {}
+    if language:
+        q["languages"] = language
+    if session_type:
+        q["session_types"] = session_type
+    items = await db.psychologists.find(q).to_list(100)
+    out = []
+    for p in items:
+        p["id"] = str(p.pop("_id"))
+        if specialization and specialization not in p.get("specializations", []):
+            continue
+        out.append(p)
+    return {"psychologists": out}
+
+
+@api_router.get("/psychologists/{pid}")
+async def get_psychologist(pid: str, user: dict = Depends(get_current_user)):
+    try:
+        p = await db.psychologists.find_one({"_id": ObjectId(pid)})
+    except Exception:
+        p = None
+    if not p:
+        raise HTTPException(status_code=404, detail="Psychologist not found")
+    p["id"] = str(p.pop("_id"))
+    p["availability"] = gen_availability(p["slug"])
+    return p
+
+
+@api_router.post("/bookings")
+async def create_booking(body: BookingIn, user: dict = Depends(get_current_user)):
+    try:
+        p = await db.psychologists.find_one({"_id": ObjectId(body.psychologist_id)})
+    except Exception:
+        p = None
+    if not p:
+        raise HTTPException(status_code=404, detail="Psychologist not found")
+    slots = gen_availability(p["slug"])
+    slot = next((s for s in slots if s["id"] == body.slot_id), None)
+    if not slot:
+        raise HTTPException(status_code=400, detail="That slot is no longer available")
+    if body.session_type not in p.get("session_types", []):
+        raise HTTPException(status_code=400, detail="Unsupported session type")
+    # ---- MOCK PAYMENT (server-side confirmation stub) ----
+    payment = {
+        "status": "paid", "provider": "mock",
+        "amount": p["price"], "currency": p.get("currency", "INR"),
+        "transaction_id": f"MOCK-{uuid_hex()}",
+        "note": "Simulated payment — no real charge. Replace with Razorpay/Stripe later.",
+    }
+    doc = {
+        "user_id": user["id"], "psychologist_id": body.psychologist_id,
+        "psychologist_name": p["name"], "slot_id": slot["id"],
+        "slot_label": slot["label"], "slot_date": slot["date"], "slot_time": slot["time"],
+        "session_type": body.session_type, "price": p["price"],
+        "currency": p.get("currency", "INR"), "status": "confirmed",
+        "payment": payment, "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    res = await db.bookings.insert_one(dict(doc))
+    doc["id"] = str(res.inserted_id)
+    doc.pop("_id", None)
+    return {"booking": doc, "message": "Your session is confirmed."}
+
+
+@api_router.get("/bookings")
+async def list_bookings(user: dict = Depends(get_current_user)):
+    items = await db.bookings.find({"user_id": user["id"]}).sort("created_at", -1).to_list(100)
+    for b in items:
+        b["id"] = str(b.pop("_id"))
+    return {"bookings": items}
+
+
+@api_router.post("/bookings/{bid}/cancel")
+async def cancel_booking(bid: str, user: dict = Depends(get_current_user)):
+    try:
+        b = await db.bookings.find_one({"_id": ObjectId(bid), "user_id": user["id"]})
+    except Exception:
+        b = None
+    if not b:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    await db.bookings.update_one({"_id": ObjectId(bid)}, {"$set": {"status": "cancelled"}})
+    return {"ok": True, "status": "cancelled"}
+
+
+def uuid_hex():
+    import uuid as _uuid
+    return _uuid.uuid4().hex[:12].upper()
+
+
+@app.on_event("startup")
+async def _startup_seed():
+    await seed_psychologists()
+
+
 
 
 app.include_router(api_router)

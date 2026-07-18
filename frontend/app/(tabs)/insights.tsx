@@ -5,10 +5,11 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useApp } from "@/src/AppContext";
 import { api } from "@/src/api";
+import { moodByKey, GROUP_TINT } from "@/src/moods";
 import { Screen, Display, AppText, Card, SectionTitle, Loading, ConfidenceBadge, colors, spacing, radius, T } from "@/src/ui";
 
 export default function Insights() {
-  const { t, lang } = useApp();
+  const { t, lang, moods } = useApp();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -64,6 +65,28 @@ export default function Insights() {
         <AppText style={styles.eyebrow}>{t("tab_insights")}</AppText>
         <Display style={styles.q}>{t("insights_q")}</Display>
 
+        {/* Last 7 days daily mood strip */}
+        {data?.daily_moods?.length ? (
+          <View style={styles.stripWrap} testID="daily-mood-strip">
+            <SectionTitle style={{ fontSize: T.lg, marginBottom: spacing.sm }}>{t("last7_days")}</SectionTitle>
+            <View style={styles.strip}>
+              {data.daily_moods.map((d: any, i: number) => {
+                const m = moodByKey(d.mood, moods);
+                const dt = new Date(d.date + "T00:00:00");
+                const wd = dt.toLocaleDateString(lang === "hi" ? "hi-IN" : "en-US", { weekday: "short" }).slice(0, 2);
+                return (
+                  <View key={i} style={styles.stripCol} testID={`daily-mood-${d.date}`}>
+                    <View style={[styles.stripTile, { backgroundColor: d.group ? GROUP_TINT[d.group] : colors.surfaceSecondary, borderColor: d.mood ? "transparent" : colors.border }]}>
+                      <Text style={styles.stripEmoji}>{m ? m.emoji : ""}</Text>
+                    </View>
+                    <AppText style={styles.stripDay}>{wd}</AppText>
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+        ) : null}
+
         {total === 0 ? (
           <View style={styles.empty}>
             <Image source={{ uri: "https://images.pexels.com/photos/8071781/pexels-photo-8071781.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940" }} style={styles.emptyImg} />
@@ -93,6 +116,12 @@ const styles = StyleSheet.create({
   wrap: { paddingHorizontal: spacing.xl, paddingTop: spacing.md },
   eyebrow: { color: colors.onSurfaceSecondary, fontSize: T.sm, textTransform: "uppercase", letterSpacing: 1 },
   q: { fontSize: 26, lineHeight: 34, marginTop: 4 },
+  stripWrap: { marginTop: spacing.xl },
+  strip: { flexDirection: "row", justifyContent: "space-between" },
+  stripCol: { alignItems: "center", flex: 1 },
+  stripTile: { width: 40, height: 46, borderRadius: radius.md, borderWidth: 1, alignItems: "center", justifyContent: "center" },
+  stripEmoji: { fontSize: 22 },
+  stripDay: { fontSize: T.sm, color: colors.onSurfaceSecondary, marginTop: 6 },
   insightText: { fontSize: T.xl, lineHeight: 28, marginTop: spacing.md },
   whyRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: spacing.md },
   why: { color: colors.onSurfaceSecondary, fontSize: T.sm, fontWeight: "500" },

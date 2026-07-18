@@ -43,11 +43,12 @@ function MoodTile({ mood, selected, onPress, lang, size }: { mood: Mood; selecte
   );
 }
 
-export function MoodSelector({ moods, value, onChange, lang }: { moods: Mood[]; value: string | null; onChange: (key: string) => void; lang: Lang }) {
+export function MoodSelector({ moods, value, onChange, lang, pad }: { moods: Mood[]; value: string | null; onChange: (key: string) => void; lang: Lang; pad?: number }) {
   const { width } = useWindowDimensions();
   const cols = 3;
   const gap = spacing.md;
-  const tile = Math.floor((Math.min(width, 460) - spacing.xl * 2 - gap * (cols - 1)) / cols);
+  const horizontalPad = pad ?? spacing.xl * 2;
+  const tile = Math.floor((Math.min(width, 460) - horizontalPad - gap * (cols - 1)) / cols);
 
   return (
     <View style={styles.grid} testID="mood-selector">

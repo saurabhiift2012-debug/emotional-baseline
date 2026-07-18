@@ -1,5 +1,6 @@
 import React, { useEffect } from "react";
 import { View, Text, StyleSheet, ScrollView, Pressable, Image, Linking } from "react-native";
+import { useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, withSequence, Easing, useReducedMotion } from "react-native-reanimated";
 import { useApp } from "@/src/AppContext";
@@ -7,6 +8,7 @@ import { Screen, Display, AppText, Card, SectionTitle, colors, spacing, radius, 
 
 export default function Support() {
   const { t } = useApp();
+  const router = useRouter();
   const scale = useSharedValue(0.7);
   const reduced = useReducedMotion();
 
@@ -25,9 +27,9 @@ export default function Support() {
   const circle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 
   const rows = [
-    { icon: "search", label: t("find_psych"), sub: t("coming_soon") },
-    { icon: "calendar", label: t("my_appointments"), sub: t("coming_soon") },
-    { icon: "book", label: t("resources"), sub: "" },
+    { icon: "search", label: t("find_psych"), sub: "", route: "/psychologists" },
+    { icon: "calendar", label: t("my_appointments"), sub: "", route: "/appointments" },
+    { icon: "book", label: t("resources"), sub: "", route: null },
   ];
 
   return (
@@ -42,7 +44,7 @@ export default function Support() {
         </View>
 
         {rows.map((r) => (
-          <Pressable key={r.label} testID={`support-${r.icon}`} style={styles.row}>
+          <Pressable key={r.label} testID={`support-${r.icon}`} onPress={() => r.route && router.push(r.route as any)} style={styles.row}>
             <View style={styles.rowIcon}><Feather name={r.icon as any} size={18} color={colors.indigo} /></View>
             <View style={{ flex: 1 }}>
               <AppText style={styles.rowLabel}>{r.label}</AppText>
