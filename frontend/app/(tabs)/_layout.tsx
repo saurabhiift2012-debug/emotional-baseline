@@ -1,6 +1,7 @@
 import React from "react";
 import { Tabs } from "expo-router";
 import { Feather } from "@expo/vector-icons";
+import { View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "@/src/AppContext";
 import { useTheme } from "@/src/ThemeContext";
@@ -29,6 +30,7 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={({ route }) => ({
         headerShown: false,
+        animation: "shift",
         tabBarActiveTintColor: colors.indigo,
         tabBarInactiveTintColor: colors.onSurfaceSecondary,
         // Sit the tab bar ABOVE the Android system navigation bar / iOS home
@@ -37,14 +39,19 @@ export default function TabsLayout() {
           backgroundColor: colors.surface,
           borderTopColor: colors.border,
           borderTopWidth: 1,
-          height: 60 + insets.bottom,
+          height: 64 + insets.bottom,
           paddingTop: 8,
           paddingBottom: insets.bottom + 8,
         },
         tabBarLabelStyle: { fontFamily: font.body, fontSize: 11, fontWeight: "500" },
         tabBarLabel: labels[route.name] ?? route.name,
-        tabBarIcon: ({ color, size }) => (
-          <Feather name={ICONS[route.name] || "circle"} size={size - 2} color={color} />
+        tabBarIcon: ({ color, focused }) => (
+          <View style={{
+            paddingHorizontal: 16, paddingVertical: 4, borderRadius: 999,
+            backgroundColor: focused ? colors.tintLav : "transparent",
+          }}>
+            <Feather name={ICONS[route.name] || "circle"} size={20} color={color} />
+          </View>
         ),
       })}
     >

@@ -1,0 +1,45 @@
+{
+  "summary": "Iteration 9 (Phase 2 + partial Phase 3) PASSED end-to-end. Backend: 7/7 pytest tests green in /app/backend/tests/test_iteration9_phase2_3.py — (a) demo login mode /api/auth/request-otp returns dev_code=123456 and /api/auth/verify-otp returns {token,user}; (b) GET /api/insights now returns numeric field 'streak' (isinstance int) and it is >0 for the seeded demo account (observed 29); (c) POST /api/auth/request-otp mode=register 400s with 'Emergency contact name, relationship and number are required.' when any of emergency_contact_name / emergency_contact_relationship / emergency_contact_phone is missing (fully missing OR partially provided); (d) POST /api/auth/request-otp mode=register 400s with 'Please read and accept the safety agreement to continue.' when agreement_accepted is absent or false — validation runs BEFORE the Twilio call so no SMS was sent (non-demo number 9876500000 used). Frontend (Playwright 390x844, real preview URL): (1) demo login → Today shows greeting 'Good afternoon, Demo 🌿' — first name only. (2) Home shows persistent 'Need to talk now?' pill (testID need-talk-now); tapping it opens the crisis sheet with all six helplines visible (14416, 18005990019, 9152987821, 18602662345, 112, 102), the 'This app does not support…' section with trauma / PTSD / suicidal language, per-line Call buttons (crisis-call-14416 present), and crisis-dismiss closes it. (3) Insights tab renders streak-pill with '🔥 29 day streak'. (4) Support tab shows open-crisis-sheet button that opens the same sheet (helpline 14416 rendered). (5) Register screen: all required testIDs present (register-name-input, register-phone-input, register-dob-input, register-ec-name, register-rel-dropdown, register-ec-phone, register-agree-row, register-read-agreement, register-send-otp-button); Send code button starts aria-disabled=true; relationship dropdown opens and picking rel-opt-friend sets the label to 'Friend'; register-read-agreement opens the Consent & Safety agreement modal which contains both 'confidential' text AND the emergency-contact safety clause ('may break confidentiality and contact emergency services or your emergency contact'); with the agreement checkbox UNCHECKED and every other field filled, tapping Send code does NOT navigate to OTP (stayed on details step); after tapping register-agree-row, the Send code button becomes enabled (aria-disabled cleared, opacity 1). Did NOT actually submit registration (would trigger real Twilio SMS per instructions). (6) Bottom tab layout renders a coloured tint-lavender pill around the active tab icon (visible on Insights and Support screenshots).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": [
+      {"component": "shadow* style props (react-native-web)", "issue": "Console warning: '\"shadow*\" style props are deprecated. Use \"boxShadow\".' Emitted on web preview only, cosmetic. Reference: /app/frontend/src/MoodSelector.tsx and any View using shadowColor/shadowOffset/shadowOpacity/shadowRadius. Non-blocking on native."}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration9_phase2_3.py",
+    "/app/test_reports/pytest/pytest_iter9.xml",
+    "/app/test_reports/iteration_9.json"
+  ],
+  "action_items": [
+    "None blocking — all Phase 2 + partial Phase 3 items work as specified.",
+    "Optional cleanup carried from iter 8: migrate shadow* style props to boxShadow (or Platform.select) to silence the RN-Web deprecation warning."
+  ],
+  "critical_code_review_comments": [
+    "server.py request_otp (lines 662-676): validation ordering is correct — the emergency-contact and agreement checks run BEFORE any Twilio call, so an invalid register payload for a real Indian number will 400 without sending an SMS. Verified in test_missing_emergency_contact_returns_400 and test_missing_agreement_returns_400 using non-demo number 9876500000.",
+    "server.py compute_streak (lines 960-972): correct — counts consecutive days ending today (or yesterday if today missing) with at least one check-in. Reflected in /api/insights response as 'streak'.",
+    "server.py /api/insights (line 957): now returns 'streak' alongside 'baseline'/'daily_moods'; no breaking change to prior fields.",
+    "frontend/src/CrisisSheet.tsx (lines 10-17, 50-67): HELPLINES array matches spec exactly (Tele MANAS 14416, KIRAN 18005990019, iCall 9152987821, Vandrevala 18602662345, National Emergency 112, Ambulance 102); each row has a Call button and the 'This app does not support…' block renders below.",
+    "frontend/app/(tabs)/index.tsx (line 78, line 218-221): Home renders testID='need-talk-now' pill; greeting uses firstName(data?.name || user?.name).",
+    "frontend/app/(tabs)/insights.tsx (lines 70-77): streak-pill only renders when data.streak truthy — good gating so pill hides for brand-new users.",
+    "frontend/app/register.tsx (lines 34-51, 53, 106-115): sendCode short-circuits with must_agree if !agreed; canSubmit checks all six fields + agreed so the PrimaryButton disabled prop keeps the button unusable until the checkbox is ticked (matches server-side gate).",
+    "frontend/app/(tabs)/_layout.tsx (lines 48-55): tabBarIcon wraps the Feather icon in a View with a pill background (colors.tintLav) when focused — this is the coloured active-tab highlight required by Phase 3."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration9_phase2_3.py (new)",
+    "/app/test_reports/iteration_9.json (new)",
+    "/app/test_reports/pytest/pytest_iter9.xml (new)"
+  ],
+  "success_rate": {
+    "backend": "100% (7/7 pytest tests passed)",
+    "frontend": "100% of tested flows (login+greeting first-name, Home crisis sheet, Insights streak-pill, Support crisis sheet, Register field/dropdown/agreement gating, active-tab pill)"
+  },
+  "seed_data_creation": "None new; demo phone +919999900000 is seeded idempotently by backend startup and used for all read-side tests.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Login path from welcome: tap 'I already have an account' then fill '+919999900000' → Send code → OTP box shows '123456' via dev_code → verify. Register requires ALL of: name, phone, dob, ec_name, ec_relationship (via rel-opt-*), ec_phone, and register-agree-row checked before the Send code button becomes enabled. Do NOT submit a fresh-number registration in automated flows — only demo bypasses Twilio and it is already registered. The 'Read the agreement' modal (register-read-agreement → agreement-close) is a UX help; ticking the checkbox directly on register-agree-row is sufficient to enable Send code. Streak for demo is deterministic-ish from the 42-day seed with 82% daily probability — expected >0 (observed 29 on this run).",
+  "rca_of_issue": "N/A — all requested Phase 2 + partial Phase 3 features implemented correctly and validated by both backend pytest and browser automation."
+}

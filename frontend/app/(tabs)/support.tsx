@@ -1,9 +1,10 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet, ScrollView, Pressable, Image, Linking } from "react-native";
 import { useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, withSequence, Easing, useReducedMotion } from "react-native-reanimated";
 import { useApp } from "@/src/AppContext";
+import { CrisisSheet } from "@/src/CrisisSheet";
 import { Screen, Display, AppText, Card, SectionTitle, spacing, radius, T, useTheme, useThemedStyles } from "@/src/ui";
 
 export default function Support() {
@@ -11,6 +12,7 @@ export default function Support() {
   const { colors } = useTheme();
   const styles = useThemedStyles(makeStyles);
   const router = useRouter();
+  const [crisis, setCrisis] = useState(false);
   const scale = useSharedValue(0.7);
   const reduced = useReducedMotion();
 
@@ -59,22 +61,23 @@ export default function Support() {
         {/* Emergency */}
         <SectionTitle style={styles.section}>{t("emergency")}</SectionTitle>
         <Card tint={colors.tintRose}>
-          <AppText style={{ color: colors.onSurface, lineHeight: 22 }}>{t("emergency_note")}</AppText>
-          <View style={styles.emRow}>
-            <Pressable testID="emergency-112" onPress={() => Linking.openURL("tel:112")} style={styles.emBtn}>
-              <Feather name="phone" size={16} color={colors.surface} />
-              <AppText style={styles.emBtnText}>112</AppText>
-            </Pressable>
-            <Pressable testID="emergency-tele" onPress={() => Linking.openURL("tel:14416")} style={[styles.emBtn, { backgroundColor: colors.indigo }]}>
-              <Feather name="phone" size={16} color={colors.surface} />
-              <AppText style={styles.emBtnText}>Tele-MANAS 14416</AppText>
-            </Pressable>
-          </View>
+          <AppText style={{ color: colors.onSurface, lineHeight: 22 }}>{t("crisis_intro")}</AppText>
+          <Pressable testID="open-crisis-sheet" onPress={() => setCrisis(true)} style={styles.crisisBtn}>
+            <Feather name="phone-call" size={16} color={"#FFFFFF"} />
+            <AppText style={styles.crisisBtnText}>{t("need_to_talk_now")}</AppText>
+          </Pressable>
         </Card>
+
+        <View style={styles.notSupport}>
+          <AppText style={styles.nsTitle}>{t("not_supported_title")}</AppText>
+          <AppText style={styles.nsList}>{t("not_supported_list")}</AppText>
+          <AppText style={styles.nsUse}>{t("use_emergency_above")}</AppText>
+        </View>
 
         <AppText style={styles.disclaimer}>{t("not_medical")}</AppText>
         <View style={{ height: spacing.xl }} />
       </ScrollView>
+      <CrisisSheet visible={crisis} onClose={() => setCrisis(false)} />
     </Screen>
   );
 }
@@ -90,6 +93,12 @@ const makeStyles = (colors: any) => StyleSheet.create({
   rowLabel: { fontSize: T.lg, color: colors.onSurface },
   rowSub: { fontSize: T.sm, color: colors.onSurfaceSecondary, marginTop: 2 },
   section: { marginTop: spacing.xl, fontSize: T.xl },
+  crisisBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.sm, backgroundColor: colors.rose, borderRadius: radius.pill, height: 50, marginTop: spacing.lg },
+  crisisBtnText: { color: "#FFFFFF", fontWeight: "700", fontSize: T.lg },
+  notSupport: { marginTop: spacing.lg, padding: spacing.lg, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border },
+  nsTitle: { color: colors.onSurfaceSecondary, fontSize: T.sm, textTransform: "uppercase", letterSpacing: 1, fontWeight: "700", marginBottom: spacing.sm },
+  nsList: { color: colors.onSurface, lineHeight: 22 },
+  nsUse: { color: colors.onSurfaceSecondary, marginTop: spacing.sm, fontStyle: "italic", fontSize: T.sm },
   emRow: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.lg, flexWrap: "wrap" },
   emBtn: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: colors.rose, borderRadius: radius.pill, paddingHorizontal: spacing.lg, height: 44 },
   emBtnText: { color: colors.surface, fontWeight: "600" },

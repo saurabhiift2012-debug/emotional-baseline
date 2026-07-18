@@ -1,11 +1,14 @@
 import React, { useState } from "react";
-import { View, StyleSheet, TextInput, Pressable } from "react-native";
+import { View, StyleSheet, TextInput, Pressable, Modal, ScrollView } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import { useApp } from "@/src/AppContext";
 import { Logo } from "@/src/Logo";
 import { Screen, Display, AppText, PrimaryButton, GhostButton, spacing, radius, font, T, useTheme, useThemedStyles } from "@/src/ui";
+
+const RELATIONSHIPS = ["parent", "spouse", "partner", "sibling", "child", "friend", "relative", "other"];
 
 export default function Register() {
   const { t, lang, requestOtp, verifyOtp } = useApp();
@@ -17,20 +20,37 @@ export default function Register() {
   const [phone, setPhone] = useState("");
   const [dob, setDob] = useState("");
   const [email, setEmail] = useState("");
+  const [ecName, setEcName] = useState("");
+  const [ecPhone, setEcPhone] = useState("");
+  const [relationship, setRelationship] = useState("");
+  const [agreed, setAgreed] = useState(false);
+  const [showRel, setShowRel] = useState(false);
+  const [showAgreement, setShowAgreement] = useState(false);
   const [code, setCode] = useState("");
   const [devCode, setDevCode] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const sendCode = async () => {
-    setErr(null); setBusy(true);
+    setErr(null);
+    if (!agreed) { setErr(t("must_agree")); return; }
+    setBusy(true);
     try {
-      const res = await requestOtp({ phone: phone.trim(), mode: "register", name: name.trim(), date_of_birth: dob.trim(), email: email.trim() || null, language: lang });
+      const res = await requestOtp({
+        phone: phone.trim(), mode: "register", name: name.trim(), date_of_birth: dob.trim(),
+        email: email.trim() || null, language: lang,
+        emergency_contact_name: ecName.trim(),
+        emergency_contact_relationship: relationship,
+        emergency_contact_phone: ecPhone.trim(),
+        agreement_accepted: agreed,
+      });
       setDevCode(res.dev_code || null);
       setStep("otp");
     } catch (e: any) { setErr(e.message || "Could not send code"); }
     finally { setBusy(false); }
   };
+
+  const canSubmit = !!(name && phone && dob && ecName && relationship && ecPhone && agreed);
 
   const verify = async () => {
     setErr(null); setBusy(true);
@@ -64,10 +84,69 @@ export default function Register() {
             <AppText style={styles.label}>{t("email_optional")}</AppText>
             <TextInput testID="register-email-input" style={styles.input} value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" placeholder="you@example.com" placeholderTextColor={colors.onSurfaceSecondary} />
 
+            {/* Emergency contact */}
+            <AppText style={styles.sectionHead}>{t("emergency_contact")}</AppText>
+            <AppText style={styles.sectionHint}>{t("ec_intro")}</AppText>
+
+            <AppText style={styles.label}>{t("ec_name")}</AppText>
+            <TextInput testID="register-ec-name" style={styles.input} value={ecName} onChangeText={setEcName} placeholder="Riya Sharma" placeholderTextColor={colors.onSurfaceSecondary} />
+
+            <AppText style={styles.label}>{t("ec_relationship")}</AppText>
+            <Pressable testID="register-rel-dropdown" onPress={() => setShowRel(true)} style={styles.dropdown}>
+              <AppText style={[styles.dropdownText, !relationship && { color: colors.onSurfaceSecondary }]}>
+                {relationship ? t(`rel_${relationship}`) : t("select_relationship")}
+              </AppText>
+              <Feather name="chevron-down" size={20} color={colors.onSurfaceSecondary} />
+            </Pressable>
+
+            <AppText style={styles.label}>{t("ec_phone")}</AppText>
+            <TextInput testID="register-ec-phone" style={styles.input} value={ecPhone} onChangeText={setEcPhone} keyboardType="phone-pad" placeholder="+91 98765 43210" placeholderTextColor={colors.onSurfaceSecondary} />
+
+            {/* Agreement */}
+            <Pressable testID="register-agree-row" onPress={() => setAgreed((v) => { Haptics.selectionAsync(); return !v; })} style={styles.agreeRow}>
+              <View style={[styles.checkbox, agreed && styles.checkboxOn]}>
+                {agreed ? <Feather name="check" size={15} color={colors.onSurfaceInverse} /> : null}
+              </View>
+              <AppText style={styles.agreeText}>{t("agree_checkbox")}</AppText>
+            </Pressable>
+            <Pressable testID="register-read-agreement" onPress={() => setShowAgreement(true)} style={styles.readLink}>
+              <Feather name="file-text" size={14} color={colors.indigo} />
+              <AppText style={styles.readLinkText}>{t("read_agreement")}</AppText>
+            </Pressable>
+
             {err ? <AppText testID="register-error" style={styles.err}>{err}</AppText> : null}
             <AppText style={styles.note}>{t("not_medical")}</AppText>
-            <PrimaryButton testID="register-send-otp-button" label={t("send_code")} disabled={busy || !name || !phone || !dob} onPress={sendCode} />
+            <PrimaryButton testID="register-send-otp-button" label={t("send_code")} disabled={busy || !canSubmit} onPress={sendCode} />
             <GhostButton testID="to-login-button" label={t("i_have_account")} onPress={() => router.replace("/login")} />
+
+            {/* Relationship picker */}
+            <Modal visible={showRel} transparent animationType="fade" onRequestClose={() => setShowRel(false)}>
+              <Pressable style={styles.pickerBackdrop} onPress={() => setShowRel(false)}>
+                <View style={styles.pickerCard}>
+                  <AppText style={styles.pickerTitle}>{t("select_relationship")}</AppText>
+                  {RELATIONSHIPS.map((r) => (
+                    <Pressable key={r} testID={`rel-opt-${r}`} onPress={() => { Haptics.selectionAsync(); setRelationship(r); setShowRel(false); }} style={styles.pickerRow}>
+                      <AppText style={[styles.pickerRowText, relationship === r && { color: colors.indigo, fontWeight: "700" }]}>{t(`rel_${r}`)}</AppText>
+                      {relationship === r ? <Feather name="check" size={18} color={colors.indigo} /> : null}
+                    </Pressable>
+                  ))}
+                </View>
+              </Pressable>
+            </Modal>
+
+            {/* Agreement modal */}
+            <Modal visible={showAgreement} transparent animationType="slide" onRequestClose={() => setShowAgreement(false)}>
+              <View style={styles.agreeBackdrop}>
+                <View style={styles.agreeSheet}>
+                  <Display style={styles.agreeTitle}>{t("agreement_title")}</Display>
+                  <ScrollView style={{ maxHeight: 360 }} contentContainerStyle={{ paddingBottom: spacing.md }} showsVerticalScrollIndicator>
+                    <AppText style={styles.agreeBody}>{t("agreement_body")}</AppText>
+                  </ScrollView>
+                  <PrimaryButton testID="agreement-accept" label={t("agree_checkbox")} onPress={() => { setAgreed(true); setShowAgreement(false); }} />
+                  <GhostButton testID="agreement-close" label={t("dismiss")} onPress={() => setShowAgreement(false)} />
+                </View>
+              </View>
+            </Modal>
           </>
         ) : (
           <OtpStep t={t} phone={phone} code={code} setCode={setCode} devCode={devCode} err={err} busy={busy}
@@ -118,6 +197,29 @@ const makeStyles = (colors: any) => StyleSheet.create({
   title: { fontSize: 30, marginBottom: spacing.lg },
   subtle: { color: colors.onSurfaceSecondary, marginBottom: spacing.lg, fontSize: T.lg },
   label: { color: colors.onSurfaceSecondary, marginBottom: spacing.sm, marginTop: spacing.md },
+  sectionHead: { fontFamily: font.display, fontSize: T.xl, color: colors.onSurface, marginTop: spacing.xl },
+  sectionHint: { color: colors.onSurfaceSecondary, fontSize: T.sm, marginTop: 4, lineHeight: 18 },
+  dropdown: {
+    height: 52, borderRadius: radius.md, backgroundColor: colors.surfaceSecondary,
+    paddingHorizontal: spacing.lg, flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    borderWidth: 1, borderColor: colors.border,
+  },
+  dropdownText: { fontFamily: font.body, fontSize: T.lg, color: colors.onSurface },
+  agreeRow: { flexDirection: "row", alignItems: "center", gap: spacing.md, marginTop: spacing.xl },
+  checkbox: { width: 26, height: 26, borderRadius: 7, borderWidth: 2, borderColor: colors.borderStrong, alignItems: "center", justifyContent: "center" },
+  checkboxOn: { backgroundColor: colors.indigo, borderColor: colors.indigo },
+  agreeText: { flex: 1, color: colors.onSurface, fontSize: T.base, lineHeight: 20 },
+  readLink: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: spacing.sm, paddingVertical: spacing.sm },
+  readLinkText: { color: colors.indigo, fontWeight: "600", fontSize: T.base },
+  pickerBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", alignItems: "center", justifyContent: "center", padding: spacing.xl },
+  pickerCard: { width: "100%", backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.lg },
+  pickerTitle: { fontFamily: font.display, fontSize: T.xl, color: colors.onSurface, marginBottom: spacing.sm },
+  pickerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
+  pickerRowText: { fontSize: T.lg, color: colors.onSurface },
+  agreeBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.55)", justifyContent: "flex-end" },
+  agreeSheet: { backgroundColor: colors.surface, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: spacing.xl },
+  agreeTitle: { fontSize: 24, marginBottom: spacing.md },
+  agreeBody: { color: colors.onSurface, lineHeight: 22, fontSize: T.base },
   input: {
     height: 52, borderRadius: radius.md, backgroundColor: colors.surfaceSecondary,
     paddingHorizontal: spacing.lg, fontFamily: font.body, fontSize: T.lg, color: colors.onSurface,

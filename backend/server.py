@@ -571,6 +571,8 @@ def _public_user(u: dict) -> dict:
         "language": u.get('language', 'en'),
         "consents": u.get('consents', {}),
         "health_connected": u.get('health_connected', {}),
+        "emergency_contact": u.get('emergency_contact'),
+        "agreement": u.get('agreement'),
     }
 
 
@@ -634,6 +636,9 @@ def _validate_18(dob_str: str):
         raise HTTPException(status_code=403, detail="You must be 18 or older to use TherapiShots.")
 
 
+AGREEMENT_VERSION = 1
+
+
 class RequestOtpIn(BaseModel):
     phone: str
     mode: str = "login"  # "login" | "register"
@@ -641,6 +646,11 @@ class RequestOtpIn(BaseModel):
     date_of_birth: Optional[str] = None
     email: Optional[str] = None
     language: str = "en"
+    # Emergency contact + safety agreement (register only)
+    emergency_contact_name: Optional[str] = None
+    emergency_contact_relationship: Optional[str] = None
+    emergency_contact_phone: Optional[str] = None
+    agreement_accepted: Optional[bool] = None
 
 
 class VerifyOtpIn(BaseModel):
@@ -659,11 +669,26 @@ async def request_otp(body: RequestOtpIn):
         if not body.name or not body.date_of_birth:
             raise HTTPException(status_code=400, detail="Name and date of birth are required.")
         _validate_18(body.date_of_birth)
+        if not (body.emergency_contact_name and body.emergency_contact_relationship and body.emergency_contact_phone):
+            raise HTTPException(status_code=400, detail="Emergency contact name, relationship and number are required.")
+        ec_phone = _ensure_indian_phone(body.emergency_contact_phone)
+        if not body.agreement_accepted:
+            raise HTTPException(status_code=400, detail="Please read and accept the safety agreement to continue.")
         pending = {
             "name": body.name.strip() or "there",
             "date_of_birth": body.date_of_birth,
             "email": (body.email or "").strip().lower() or None,
             "language": body.language,
+            "emergency_contact": {
+                "name": body.emergency_contact_name.strip(),
+                "relationship": body.emergency_contact_relationship.strip(),
+                "phone": ec_phone,
+            },
+            "agreement": {
+                "accepted": True,
+                "version": AGREEMENT_VERSION,
+                "accepted_at": datetime.now(timezone.utc).isoformat(),
+            },
         }
     else:  # login
         if not existing:
@@ -732,6 +757,8 @@ async def verify_otp(body: VerifyOtpIn):
             "name": pending.get("name", "there"),
             "date_of_birth": pending.get("date_of_birth"),
             "language": pending.get("language", "en"),
+            "emergency_contact": pending.get("emergency_contact"),
+            "agreement": pending.get("agreement"),
             "consents": _default_consents(),
             "consent_version": 1,
             "health_connected": {"sleep": True, "activity": True, "steps": True, "heart": True},
@@ -927,7 +954,22 @@ async def insights(user: dict = Depends(get_current_user)):
             "group": c.get('group') if c else None,
         })
     return {"insights": data, "baseline": baseline, "checkin_count": len(checkins),
-            "daily_moods": daily_moods}
+            "daily_moods": daily_moods, "streak": compute_streak(checkins)}
+
+
+def compute_streak(checkins) -> int:
+    """Consecutive days (ending today, or yesterday if not yet checked in today)
+    with at least one check-in."""
+    dates = {c['date'] for c in checkins}
+    if not dates:
+        return 0
+    today = date.today()
+    cursor = today if today.isoformat() in dates else today - timedelta(days=1)
+    streak = 0
+    while cursor.isoformat() in dates:
+        streak += 1
+        cursor -= timedelta(days=1)
+    return streak
 
 
 @api_router.get("/pulse")

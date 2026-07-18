@@ -8,6 +8,8 @@ import { api } from "@/src/api";
 import { moodByKey } from "@/src/moods";
 import { MoodSelector } from "@/src/MoodSelector";
 import { MoodEmoji } from "@/src/MoodEmoji";
+import { Logo } from "@/src/Logo";
+import { CrisisSheet } from "@/src/CrisisSheet";
 import { Screen, Display, AppText, Card, SectionTitle, Loading, spacing, radius, font, T, useTheme, useThemedStyles } from "@/src/ui";
 
 export default function Today() {
@@ -20,6 +22,7 @@ export default function Today() {
   const [feedback, setFeedback] = useState<string | null>(null);
   const [justSaved, setJustSaved] = useState(false);
   const [lowPrompt, setLowPrompt] = useState(false);
+  const [crisis, setCrisis] = useState(false);
 
   const LOW_MOODS = ["heavy", "anxious", "frustrated"];
 
@@ -70,8 +73,15 @@ export default function Today() {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={false} onRefresh={load} tintColor={colors.amber} />}
       >
+        <View style={styles.topBar}>
+          <Logo size={40} />
+          <Pressable testID="need-talk-now" onPress={() => setCrisis(true)} style={styles.talkNow}>
+            <Feather name="phone-call" size={14} color={colors.rose} />
+            <AppText style={styles.talkNowText}>{t("need_to_talk_now")}</AppText>
+          </Pressable>
+        </View>
         <AppText style={styles.greet}>{t(greetKey)},</AppText>
-        <Display style={styles.name}>{data?.name || user?.name} 🌿</Display>
+        <Display style={styles.name}>{firstName(data?.name || user?.name)} 🌿</Display>
 
         {/* Prominent inline mood check-in — shown every time the app opens */}
         <View style={styles.hero} testID="today-mood-hero">
@@ -200,8 +210,14 @@ export default function Today() {
 
         <View style={{ height: spacing.xl }} />
       </ScrollView>
+      <CrisisSheet visible={crisis} onClose={() => setCrisis(false)} />
     </Screen>
   );
+}
+
+function firstName(full?: string) {
+  if (!full) return "there";
+  return full.trim().split(/\s+/)[0];
 }
 
 function fmtTime(iso?: string) {
@@ -216,6 +232,9 @@ function fmtTime(iso?: string) {
 
 const makeStyles = (colors: any) => StyleSheet.create({
   wrap: { paddingHorizontal: spacing.xl, paddingTop: spacing.md },
+  topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: spacing.md },
+  talkNow: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: colors.tintRose, borderRadius: radius.pill, paddingHorizontal: spacing.md, height: 38 },
+  talkNowText: { color: colors.rose, fontWeight: "700", fontSize: T.sm },
   greet: { color: colors.onSurfaceSecondary, fontSize: T.lg },
   name: { fontSize: 28, marginTop: 2 },
   banner: { backgroundColor: colors.surfaceSecondary, borderRadius: radius.lg, padding: spacing.lg, marginTop: spacing.lg },

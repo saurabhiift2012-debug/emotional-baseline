@@ -46,6 +46,43 @@ export const STR: Dict = {
   payment_cancelled: { en: "Payment was cancelled.", hi: "भुगतान रद्द कर दिया गया।" },
   paid_via: { en: "Paid via Razorpay", hi: "Razorpay से भुगतान" },
 
+  // crisis / emergency
+  need_to_talk_now: { en: "Need to talk now?", hi: "अभी बात करनी है?" },
+  you_not_alone: { en: "You are not alone", hi: "आप अकेले नहीं हैं" },
+  crisis_intro: { en: "If you are in danger or in crisis, please reach one of these numbers now.", hi: "यदि आप खतरे या संकट में हैं, तो कृपया अभी इनमें से किसी नंबर पर संपर्क करें।" },
+  book_a_psychologist: { en: "Book a psychologist", hi: "मनोवैज्ञानिक बुक करें" },
+  or_reach_emergency: { en: "Or reach an emergency number right now:", hi: "या अभी किसी आपातकालीन नंबर पर संपर्क करें:" },
+  call_now: { en: "Call", hi: "कॉल" },
+  dismiss: { en: "Dismiss", hi: "बंद करें" },
+  not_supported_title: { en: "This app does not support", hi: "यह ऐप इनका समर्थन नहीं करता" },
+  not_supported_list: { en: "Trauma or PTSD · Sexual assault or abuse · Suicidal thoughts or self-harm · Domestic violence · Psychiatric emergencies · Crisis intervention", hi: "ट्रॉमा या PTSD · यौन उत्पीड़न या दुर्व्यवहार · आत्मघाती विचार या स्वयं को हानि · घरेलू हिंसा · मानसिक आपात · संकट हस्तक्षेप" },
+  use_emergency_above: { en: "Please use the emergency resources above for immediate support.", hi: "तत्काल सहायता के लिए कृपया ऊपर दिए आपातकालीन संसाधनों का उपयोग करें।" },
+  day_streak: { en: "day streak", hi: "दिन की श्रृंखला" },
+
+  // registration: emergency contact + agreement
+  emergency_contact: { en: "Emergency contact", hi: "आपातकालीन संपर्क" },
+  ec_intro: { en: "Someone we can reach if we're ever concerned for your safety.", hi: "यदि हमें कभी आपकी सुरक्षा की चिंता हो तो हम किससे संपर्क करें।" },
+  ec_name: { en: "Contact name", hi: "संपर्क का नाम" },
+  ec_relationship: { en: "Relationship", hi: "रिश्ता" },
+  ec_phone: { en: "Contact mobile number", hi: "संपर्क मोबाइल नंबर" },
+  select_relationship: { en: "Select relationship", hi: "रिश्ता चुनें" },
+  rel_parent: { en: "Parent", hi: "माता-पिता" },
+  rel_spouse: { en: "Spouse", hi: "जीवनसाथी" },
+  rel_partner: { en: "Partner", hi: "साथी" },
+  rel_sibling: { en: "Sibling", hi: "भाई-बहन" },
+  rel_child: { en: "Child", hi: "संतान" },
+  rel_friend: { en: "Friend", hi: "मित्र" },
+  rel_relative: { en: "Relative", hi: "रिश्तेदार" },
+  rel_other: { en: "Other", hi: "अन्य" },
+  agreement_title: { en: "Consent & safety agreement", hi: "सहमति और सुरक्षा अनुबंध" },
+  agreement_body: {
+    en: "By continuing, you agree that TherapiShots may access and process the health and wellbeing data you provide (moods, notes, and any connected health signals) solely to power your check-ins, patterns and personalised support.\n\nYour information is kept strictly confidential and is never sold. During a consultation, your psychologist is bound by confidentiality. However, if the psychologist reasonably believes you are at risk of serious harm to yourself or others, they may break confidentiality and contact emergency services or your emergency contact to help keep you safe.\n\nTherapiShots is a wellbeing reflection tool, not a medical or crisis service.",
+    hi: "जारी रखने पर, आप सहमत हैं कि TherapiShots आपके द्वारा दिए गए स्वास्थ्य व कल्याण डेटा (मूड, नोट्स और जुड़े स्वास्थ्य संकेत) को केवल आपके चेक-इन, पैटर्न और व्यक्तिगत सहायता के लिए एक्सेस व प्रोसेस कर सकता है।\n\nआपकी जानकारी पूर्णतः गोपनीय रखी जाती है और कभी बेची नहीं जाती। परामर्श के दौरान आपका मनोवैज्ञानिक गोपनीयता के लिए बाध्य है। परंतु यदि मनोवैज्ञानिक को उचित रूप से लगे कि आप स्वयं या दूसरों के लिए गंभीर जोखिम में हैं, तो वह गोपनीयता तोड़कर आपकी सुरक्षा हेतु आपातकालीन सेवाओं या आपके आपातकालीन संपर्क से संपर्क कर सकता है।\n\nTherapiShots एक कल्याण चिंतन उपकरण है, कोई चिकित्सा या संकट सेवा नहीं।",
+  },
+  agree_checkbox: { en: "I have read and agree to the above", hi: "मैंने उपरोक्त पढ़ा और सहमत हूँ" },
+  read_agreement: { en: "Read the agreement", hi: "अनुबंध पढ़ें" },
+  must_agree: { en: "Please accept the agreement to continue.", hi: "जारी रखने के लिए कृपया अनुबंध स्वीकार करें।" },
+
   // tabs
   tab_today: { en: "Today", hi: "आज" },
   tab_insights: { en: "Insights", hi: "अंतर्दृष्टि" },

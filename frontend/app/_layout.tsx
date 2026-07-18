@@ -20,9 +20,9 @@ function ThemedStack() {
   return (
     <>
       <StatusBar style={scheme === "dark" ? "light" : "dark"} />
-      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.surface } }}>
-        <Stack.Screen name="checkin" options={{ presentation: "modal" }} />
-        <Stack.Screen name="story" options={{ presentation: "modal" }} />
+      <Stack screenOptions={{ headerShown: false, animation: "slide_from_right", contentStyle: { backgroundColor: colors.surface } }}>
+        <Stack.Screen name="checkin" options={{ presentation: "modal", animation: "slide_from_bottom" }} />
+        <Stack.Screen name="story" options={{ presentation: "modal", animation: "slide_from_bottom" }} />
       </Stack>
     </>
   );

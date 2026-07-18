@@ -66,7 +66,15 @@ export default function Insights() {
     <Screen>
       <ScrollView contentContainerStyle={styles.wrap} showsVerticalScrollIndicator={false}>
         <AppText style={styles.eyebrow}>{t("tab_insights")}</AppText>
-        <Display style={styles.q}>{t("insights_q")}</Display>
+        <View style={styles.qRow}>
+          <Display style={styles.q}>{t("insights_q")}</Display>
+          {data?.streak ? (
+            <View style={styles.streakPill} testID="streak-pill">
+              <AppText style={styles.streakFlame}>🔥</AppText>
+              <AppText style={styles.streakText}>{data.streak} {t("day_streak")}</AppText>
+            </View>
+          ) : null}
+        </View>
 
         {/* Last 7 days daily mood strip */}
         {data?.daily_moods?.length ? (
@@ -116,7 +124,11 @@ function fbLabel(k: string, t: (s: string) => string) {
 const makeStyles = (colors: any) => StyleSheet.create({
   wrap: { paddingHorizontal: spacing.xl, paddingTop: spacing.md },
   eyebrow: { color: colors.onSurfaceSecondary, fontSize: T.sm, textTransform: "uppercase", letterSpacing: 1 },
-  q: { fontSize: 26, lineHeight: 34, marginTop: 4 },
+  qRow: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: spacing.md },
+  q: { fontSize: 26, lineHeight: 34, marginTop: 4, flex: 1 },
+  streakPill: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: colors.tintWarm, borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: 8, marginTop: 6 },
+  streakFlame: { fontSize: T.base },
+  streakText: { color: colors.onSurface, fontWeight: "700", fontSize: T.sm },
   stripWrap: { marginTop: spacing.xl },
   strip: { flexDirection: "row", justifyContent: "space-between" },
   stripCol: { alignItems: "center", flex: 1 },
