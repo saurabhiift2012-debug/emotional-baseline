@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { View, Text, StyleSheet, Pressable, Image } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -11,12 +12,13 @@ export default function Onboarding() {
   const { t, lang, setLang } = useApp();
   const { colors } = useTheme();
   const styles = useThemedStyles(makeStyles);
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const [confirmed, setConfirmed] = useState(false);
 
   return (
     <Screen>
-      <View style={styles.wrap}>
+      <View style={[styles.wrap, { paddingBottom: spacing.lg + insets.bottom }]}>
         <View style={styles.langRow}>
           {(["en", "hi"] as const).map((l) => (
             <Pressable

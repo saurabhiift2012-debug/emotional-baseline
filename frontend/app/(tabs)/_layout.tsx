@@ -1,7 +1,7 @@
 import React from "react";
 import { Tabs } from "expo-router";
 import { Feather } from "@expo/vector-icons";
-import { Platform } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "@/src/AppContext";
 import { useTheme } from "@/src/ThemeContext";
 import { font } from "@/src/theme";
@@ -17,6 +17,7 @@ const ICONS: Record<string, any> = {
 export default function TabsLayout() {
   const { t } = useApp();
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const labels: Record<string, string> = {
     index: t("tab_today"),
     insights: t("tab_insights"),
@@ -30,13 +31,15 @@ export default function TabsLayout() {
         headerShown: false,
         tabBarActiveTintColor: colors.indigo,
         tabBarInactiveTintColor: colors.onSurfaceSecondary,
+        // Sit the tab bar ABOVE the Android system navigation bar / iOS home
+        // indicator by adding the bottom safe-area inset (edge-to-edge safe).
         tabBarStyle: {
           backgroundColor: colors.surface,
           borderTopColor: colors.border,
           borderTopWidth: 1,
-          height: Platform.OS === "ios" ? 86 : 66,
+          height: 60 + insets.bottom,
           paddingTop: 8,
-          paddingBottom: Platform.OS === "ios" ? 28 : 10,
+          paddingBottom: insets.bottom + 8,
         },
         tabBarLabelStyle: { fontFamily: font.body, fontSize: 11, fontWeight: "500" },
         tabBarLabel: labels[route.name] ?? route.name,

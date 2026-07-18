@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { View, Text, StyleSheet, Pressable, ScrollView, TextInput } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
@@ -16,6 +17,7 @@ export default function CheckIn() {
   const { t, lang, moods } = useApp();
   const { colors } = useTheme();
   const styles = useThemedStyles(makeStyles);
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const [step, setStep] = useState<Step>("mood");
   const [mood, setMood] = useState<string | null>(null);
@@ -112,7 +114,7 @@ export default function CheckIn() {
       )}
 
       {step !== "done" && (
-        <View style={styles.footer}>
+        <View style={[styles.footer, { paddingBottom: spacing.xl + insets.bottom }]}>
           {step === "mood" && (
             <PrimaryButton testID="mood-continue-button" label={t("continue")} disabled={!mood} onPress={() => setStep("context")} />
           )}

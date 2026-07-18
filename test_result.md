@@ -162,6 +162,17 @@ frontend:
         - working: true
           agent: "main"
           comment: "Logo mark on icon/splash/adaptive/favicon. Logo component shown on onboarding + auth. Verified via screenshot on onboarding."
+  - task: "Android edge-to-edge safe area — tab bar (action ribbon) above system nav bar"
+    implemented: true
+    working: true
+    file: "frontend/app/(tabs)/_layout.tsx, onboarding.tsx, checkin.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "main"
+          comment: "Tab bar height/paddingBottom now add useSafeAreaInsets().bottom so the ribbon sits above the Android system nav bar (edgeToEdgeEnabled). Onboarding + check-in fixed-bottom CTAs also add bottom inset. Verified via screenshot."
 
 metadata:
   created_by: "main_agent"
