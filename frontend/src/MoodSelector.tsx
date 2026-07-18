@@ -99,7 +99,9 @@ const styles = StyleSheet.create({
   halo: {
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.22)",
+    backgroundColor: "rgba(250,247,242,0.72)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.6)",
   },
   tileSelected: {},
   label: { marginTop: spacing.sm, fontFamily: font.body, fontSize: T.base, color: colors.onSurfaceSecondary },
