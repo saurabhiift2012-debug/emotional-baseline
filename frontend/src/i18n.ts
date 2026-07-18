@@ -68,6 +68,13 @@ export const STR: Dict = {
   no_checkin: { en: "No check-in", hi: "कोई चेक-इन नहीं" },
   brighter: { en: "Brighter", hi: "उज्जवल" },
   heavier: { en: "Heavier", hi: "भारी" },
+  steady_word: { en: "Steady", hi: "स्थिर" },
+  trend_label: { en: "Trend", hi: "रुझान" },
+  trend_improving: { en: "Lifting", hi: "ऊपर की ओर" },
+  trend_declining: { en: "Dipping", hi: "नीचे की ओर" },
+  trend_steady: { en: "Holding steady", hi: "स्थिर" },
+  trend_volatile: { en: "Swinging", hi: "उतार-चढ़ाव" },
+  story_days: { en: "days", hi: "दिन" },
 
   // registration: emergency contact + agreement
   emergency_contact: { en: "Emergency contact", hi: "आपातकालीन संपर्क" },

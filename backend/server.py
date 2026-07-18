@@ -1070,6 +1070,73 @@ async def progress(user: dict = Depends(get_current_user)):
 # ----------------------------------------------------------------------------
 # Routes: My Story (AI rephrases ONLY validated structured patterns)
 # ----------------------------------------------------------------------------
+# A composition × trend matrix that turns the Feel Map (mix of low/steady/bright
+# days) and the Mood trend (direction over the window) into a SPECIFIC, non-generic
+# reflection for "Read your story". Supportive, non-diagnostic.
+STORY_MATRIX = {
+    "bright": {
+        "improving": "Your recent days have leaned bright, and they've kept lifting. Whatever you've been doing lately seems to be helping — it's worth noticing what's behind it.",
+        "declining": "Overall this has been a bright stretch, though the last few days eased off a little. A gentle dip after good days is completely normal — be kind to your energy.",
+        "steady": "You've had a steadily bright run. Consistency like this is quietly powerful; small good routines really do add up.",
+        "volatile": "There's been plenty of brightness, even if your days swung a fair bit. Ups and downs around good moments are still good news overall.",
+    },
+    "steady": {
+        "improving": "Your days have been fairly even, and lately they've started to lift. Steady ground with a gentle rise is a hopeful shape.",
+        "declining": "You've been mostly on even ground, with a slight downward drift recently. Nothing dramatic — just a nudge to rest and check in with yourself.",
+        "steady": "Your mood has held steady and level. Flat stretches aren't nothing — they're a stable base you can build small things on.",
+        "volatile": "Underneath a mostly even picture, some days swung more than others. Naming those wobble days can help you spot what stirs them.",
+    },
+    "low": {
+        "improving": "It's been a heavier stretch, but the recent trend is quietly lifting. That upward turn matters — hold onto whatever is helping.",
+        "declining": "These have been heavier days, and the trend kept dipping. You don't have to carry this alone — a short talk with someone might help.",
+        "steady": "You've sat with a lot of heaviness lately, holding fairly level. That's hard to do — please be gentle, and consider reaching out.",
+        "volatile": "Heavier days have come and gone in waves. When lows swing like this, extra support and steadier routines can make a real difference.",
+    },
+    "mixed": {
+        "improving": "Your days have been a real mix, and the overall direction is lifting. Range is human — and the trend is a kind one right now.",
+        "declining": "It's been a mixed stretch that edged downward lately. Mixed days are normal; if the dip continues, it's worth talking it through.",
+        "steady": "You've moved between heavier and brighter days around a steady centre. That variety is part of a full emotional life.",
+        "volatile": "Your days swung widely between light and heavy. Big swings can be tiring — noticing your triggers is a strong first step.",
+    },
+}
+
+
+def story_signature(window):
+    """Derive (composition, trend) from a window of daily check-ins and map it to
+    a specific matrix note. `window` items carry `group` and `mood_value`."""
+    groups = [c.get('group') for c in window if c.get('group')]
+    n = len(groups)
+    if n == 0:
+        return None
+    low, neutral, bright = groups.count('low'), groups.count('neutral'), groups.count('bright')
+    if bright / n >= 0.5:
+        comp = "bright"
+    elif low / n >= 0.4:
+        comp = "low"
+    elif neutral / n >= 0.5:
+        comp = "steady"
+    else:
+        comp = "mixed"
+
+    vals = [c['mood_value'] for c in sorted(window, key=lambda c: c['date']) if c.get('mood_value') is not None]
+    trend = "steady"
+    if len(vals) >= 4:
+        half = len(vals) // 2
+        first, second = float(np.mean(vals[:half])), float(np.mean(vals[half:]))
+        if float(np.std(vals)) >= 1.6:
+            trend = "volatile"
+        elif second >= first + 0.5:
+            trend = "improving"
+        elif second <= first - 0.5:
+            trend = "declining"
+    return {
+        "composition": comp, "trend": trend,
+        "low_days": low, "steady_days": neutral, "bright_days": bright,
+        "note": STORY_MATRIX[comp][trend],
+    }
+
+
+
 @api_router.get("/story")
 async def story(period: str = "week", user: dict = Depends(get_current_user)):
     uid = user['id']
@@ -1080,6 +1147,7 @@ async def story(period: str = "week", user: dict = Depends(get_current_user)):
     window = [c for c in checkins if c['date'] >= since]
     ins = build_insights(checkins, hbd)
     baseline = compute_baseline(checkins, healths)
+    sig = story_signature(window)
 
     # Structured, validated facts only (no raw notes / PII sent to the LLM)
     facts = {
@@ -1087,6 +1155,12 @@ async def story(period: str = "week", user: dict = Depends(get_current_user)):
         "checkin_count": len(window),
         "avg_mood": round(float(np.mean([c['mood_value'] for c in window])), 1) if window else None,
         "baseline_mood": baseline['mood'],
+        "composition": sig['composition'] if sig else None,
+        "trend": sig['trend'] if sig else None,
+        "bright_days": sig['bright_days'] if sig else 0,
+        "steady_days": sig['steady_days'] if sig else 0,
+        "low_days": sig['low_days'] if sig else 0,
+        "matrix_note": sig['note'] if sig else None,
         "top_helps": [i['text'] for i in ins['helps'][:2]],
         "top_harder": [i['text'] for i in ins['harder'][:1]],
         "context_patterns": [i['text'] for i in ins['context'][:1]],
@@ -1102,7 +1176,12 @@ async def story(period: str = "week", user: dict = Depends(get_current_user)):
 def _story_template(f, period) -> str:
     label = "week" if period == "week" else "month"
     parts = [f"You checked in {f['checkin_count']} times this {label}."]
-    if f['avg_mood'] and f['baseline_mood']:
+    if f.get('bright_days') is not None and (f['bright_days'] + f['steady_days'] + f['low_days']) > 0:
+        parts.append(f"That's {f['bright_days']} brighter, {f['steady_days']} steady and {f['low_days']} heavier days.")
+    # The matrix note is the core, data-specific reflection.
+    if f.get('matrix_note'):
+        parts.append(f['matrix_note'])
+    elif f['avg_mood'] and f['baseline_mood']:
         if f['avg_mood'] > f['baseline_mood'] + 0.3:
             parts.append("Your mood was generally higher than your usual pattern.")
         elif f['avg_mood'] < f['baseline_mood'] - 0.3:

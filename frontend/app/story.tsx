@@ -4,7 +4,7 @@ import { useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { useApp } from "@/src/AppContext";
 import { api } from "@/src/api";
-import { Screen, Display, AppText, Card, Loading, spacing, radius, T, useTheme, useThemedStyles } from "@/src/ui";
+import { Screen, Display, AppText, Card, Loading, spacing, radius, font, T, useTheme, useThemedStyles } from "@/src/ui";
 
 export default function Story() {
   const { t } = useApp();
@@ -24,6 +24,10 @@ export default function Story() {
   useEffect(() => { load(period); }, [period, load]);
 
   const text = data?.ai_text || data?.template;
+  const facts = data?.facts;
+  const totalDays = facts ? (facts.bright_days + facts.steady_days + facts.low_days) : 0;
+  const TREND_ICON: Record<string, any> = { improving: "trending-up", declining: "trending-down", steady: "minus", volatile: "activity" };
+  const TREND_KEY: Record<string, string> = { improving: "trend_improving", declining: "trend_declining", steady: "trend_steady", volatile: "trend_volatile" };
 
   return (
     <Screen>
@@ -52,6 +56,34 @@ export default function Story() {
               </View>
             )}
             <Display style={styles.story}>{text}</Display>
+            {totalDays > 0 && (
+              <>
+                <View style={styles.divider} />
+                <View style={styles.statRow}>
+                  <View style={styles.stat}>
+                    <View style={[styles.statDot, { backgroundColor: colors.sage }]} />
+                    <AppText style={styles.statNum}>{facts.bright_days}</AppText>
+                    <AppText style={styles.statLbl}>{t("brighter")}</AppText>
+                  </View>
+                  <View style={styles.stat}>
+                    <View style={[styles.statDot, { backgroundColor: colors.amber }]} />
+                    <AppText style={styles.statNum}>{facts.steady_days}</AppText>
+                    <AppText style={styles.statLbl}>{t("steady_word")}</AppText>
+                  </View>
+                  <View style={styles.stat}>
+                    <View style={[styles.statDot, { backgroundColor: colors.rose }]} />
+                    <AppText style={styles.statNum}>{facts.low_days}</AppText>
+                    <AppText style={styles.statLbl}>{t("heavier")}</AppText>
+                  </View>
+                </View>
+                {facts.trend && (
+                  <View style={styles.trendPill} testID="story-trend">
+                    <Feather name={TREND_ICON[facts.trend]} size={14} color={colors.indigo} />
+                    <AppText style={styles.trendText}>{t("trend_label")}: {t(TREND_KEY[facts.trend])}</AppText>
+                  </View>
+                )}
+              </>
+            )}
           </Card>
         )}
         <AppText style={styles.note}>{t("not_medical")}</AppText>
@@ -72,5 +104,13 @@ const makeStyles = (colors: any) => StyleSheet.create({
   aiTag: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: spacing.md },
   aiTagText: { color: colors.indigo, fontSize: T.sm, fontWeight: "600" },
   story: { fontSize: 22, lineHeight: 34 },
+  divider: { height: 1, backgroundColor: colors.border, marginVertical: spacing.lg },
+  statRow: { flexDirection: "row", justifyContent: "space-around" },
+  stat: { alignItems: "center", gap: 4 },
+  statDot: { width: 10, height: 10, borderRadius: 5, marginBottom: 2 },
+  statNum: { fontFamily: font.display, fontSize: 26, color: colors.onSurface },
+  statLbl: { fontSize: T.sm, color: colors.onSurfaceSecondary },
+  trendPill: { flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "center", marginTop: spacing.lg, backgroundColor: colors.tintLav, borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: 8 },
+  trendText: { color: colors.onSurface, fontWeight: "600", fontSize: T.sm },
   note: { fontSize: T.sm, color: colors.onSurfaceSecondary, marginTop: spacing.xl, fontStyle: "italic", lineHeight: 18 },
 });
