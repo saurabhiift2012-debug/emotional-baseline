@@ -36,6 +36,14 @@ export const GROUP_TINT: Record<string, string> = {
   bright: "#E7EEE3",
 };
 
+// Stronger, clearly-visible tones for the Feel Map (uses the core brand palette:
+// rose / amber / sage). Tonal, not a good/bad scale.
+export const GROUP_COLOR: Record<string, string> = {
+  low: "#C9897A",
+  neutral: "#D4A574",
+  bright: "#8BAF8C",
+};
+
 export const CONTEXT_TAGS = [
   "work", "family", "relationships", "health", "sleep",
   "money", "exercise", "social", "travel", "weather", "other",

@@ -4,7 +4,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { useApp } from "@/src/AppContext";
 import { api } from "@/src/api";
-import { GROUP_TINT } from "@/src/moods";
+import { GROUP_COLOR } from "@/src/moods";
 import { Screen, Display, AppText, Card, SectionTitle, Loading, colors, spacing, radius, T } from "@/src/ui";
 
 const STATUS_KEY: Record<string, string> = { above: "status_above", below: "status_below", around: "status_around", not_enough: "status_mixed" };
@@ -55,7 +55,15 @@ export default function Progress() {
         <Card>
           <View style={styles.feelMap}>
             {(prog?.feel_map || []).map((d: any, i: number) => (
-              <View key={i} style={[styles.dot, { backgroundColor: d.group ? GROUP_TINT[d.group] : colors.surface, borderColor: d.group ? "transparent" : colors.border }]} />
+              <View key={i} style={[styles.dot, { backgroundColor: d.group ? GROUP_COLOR[d.group] : "transparent", borderColor: d.group ? "transparent" : colors.border }]} />
+            ))}
+          </View>
+          <View style={styles.legend}>
+            {(["low", "neutral", "bright"] as const).map((g) => (
+              <View key={g} style={styles.legendItem}>
+                <View style={[styles.legendDot, { backgroundColor: GROUP_COLOR[g] }]} />
+                <AppText style={styles.legendText}>{g === "low" ? "Low" : g === "neutral" ? "Steady" : "Bright"}</AppText>
+              </View>
             ))}
           </View>
         </Card>
@@ -107,8 +115,12 @@ const styles = StyleSheet.create({
   disclaimer: { marginTop: spacing.md, fontSize: T.sm, color: colors.onSurfaceSecondary, fontStyle: "italic", lineHeight: 18 },
   bigNum: { fontSize: 44, color: colors.indigo, marginRight: spacing.md },
   bigNumLabel: { flex: 1, fontSize: T.lg, color: colors.onSurface },
-  feelMap: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
-  dot: { width: 13, height: 13, borderRadius: 7, borderWidth: 1 },
+  feelMap: { flexDirection: "row", flexWrap: "wrap", gap: 7 },
+  dot: { width: 16, height: 16, borderRadius: 8, borderWidth: 1 },
+  legend: { flexDirection: "row", gap: spacing.lg, marginTop: spacing.lg },
+  legendItem: { flexDirection: "row", alignItems: "center", gap: 6 },
+  legendDot: { width: 12, height: 12, borderRadius: 6 },
+  legendText: { fontSize: T.sm, color: colors.onSurfaceSecondary },
   chart: { flexDirection: "row", alignItems: "flex-end", gap: 3, height: 96 },
   storyBtn: { flexDirection: "row", alignItems: "center", gap: spacing.md, backgroundColor: colors.indigo, borderRadius: radius.lg, padding: spacing.lg, marginTop: spacing.xl },
   storyBtnText: { flex: 1, color: colors.onSurfaceInverse, fontSize: T.lg, fontWeight: "600" },

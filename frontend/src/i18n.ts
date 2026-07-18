@@ -131,6 +131,7 @@ export const STR: Dict = {
   coming_soon: { en: "Coming soon", hi: "जल्द आ रहा है" },
   my_appointments: { en: "My appointments", hi: "मेरी अपॉइंटमेंट" },
   resources: { en: "Wellbeing resources", hi: "वेलबीइंग संसाधन" },
+  resources_intro: { en: "Simple, everyday practices you can try. These are self-help ideas, not medical advice.", hi: "आज़माने के लिए सरल, रोज़मर्रा के अभ्यास। ये स्व-सहायता विचार हैं, चिकित्सा सलाह नहीं।" },
   emergency: { en: "Emergency support", hi: "आपातकालीन सहायता" },
   emergency_note: { en: "If you are in immediate danger, contact local emergency services. TherapiShots is not an emergency service.", hi: "यदि आप तत्काल खतरे में हैं, तो स्थानीय आपातकालीन सेवाओं से संपर्क करें। TherapiShots एक आपातकालीन सेवा नहीं है।" },
   repeated_low_title: { en: "Would some extra support help?", hi: "क्या कुछ अतिरिक्त सहारा मदद करेगा?" },

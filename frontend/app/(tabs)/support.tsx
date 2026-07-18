@@ -29,7 +29,7 @@ export default function Support() {
   const rows = [
     { icon: "search", label: t("find_psych"), sub: "", route: "/psychologists" },
     { icon: "calendar", label: t("my_appointments"), sub: "", route: "/appointments" },
-    { icon: "book", label: t("resources"), sub: "", route: null },
+    { icon: "book", label: t("resources"), sub: "", route: "/resources" },
   ];
 
   return (
