@@ -31,7 +31,20 @@ export const STR: Dict = {
   verify_continue: { en: "Verify & continue", hi: "सत्यापित करें और आगे बढ़ें" },
   resend_code: { en: "Resend code", hi: "कोड फिर भेजें" },
   change_number: { en: "Change number", hi: "नंबर बदलें" },
-  dev_code_note: { en: "Dev code (no SMS yet)", hi: "डेव कोड (अभी SMS नहीं)" },
+  dev_code_note: { en: "Test code (demo number)", hi: "टेस्ट कोड (डेमो नंबर)" },
+
+  // appearance
+  appearance: { en: "Appearance", hi: "रूप-रंग" },
+  theme_system: { en: "System", hi: "सिस्टम" },
+  theme_light: { en: "Light", hi: "उजाला" },
+  theme_dark: { en: "Dark", hi: "अँधेरा" },
+
+  // payments
+  pay_now: { en: "Pay now", hi: "अभी भुगतान करें" },
+  payment_secure_note: { en: "Secure payment via Razorpay. You'll be charged only after confirming.", hi: "Razorpay के माध्यम से सुरक्षित भुगतान। पुष्टि के बाद ही शुल्क लिया जाएगा।" },
+  payment_failed: { en: "Payment could not be completed. Please try again.", hi: "भुगतान पूरा नहीं हो सका। कृपया पुनः प्रयास करें।" },
+  payment_cancelled: { en: "Payment was cancelled.", hi: "भुगतान रद्द कर दिया गया।" },
+  paid_via: { en: "Paid via Razorpay", hi: "Razorpay से भुगतान" },
 
   // tabs
   tab_today: { en: "Today", hi: "आज" },

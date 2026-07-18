@@ -5,13 +5,15 @@ import { Feather } from "@expo/vector-icons";
 import { useApp } from "@/src/AppContext";
 import { api } from "@/src/api";
 import { GROUP_COLOR } from "@/src/moods";
-import { Screen, Display, AppText, Card, SectionTitle, Loading, colors, spacing, radius, T } from "@/src/ui";
+import { Screen, Display, AppText, Card, SectionTitle, Loading, spacing, radius, T, useTheme, useThemedStyles } from "@/src/ui";
 
 const STATUS_KEY: Record<string, string> = { above: "status_above", below: "status_below", around: "status_around", not_enough: "status_mixed" };
 const STATUS_ICON: Record<string, any> = { above: "arrow-up-right", below: "arrow-down-right", around: "minus", not_enough: "help-circle" };
 
 export default function Progress() {
   const { t } = useApp();
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const router = useRouter();
   const [prog, setProg] = useState<any>(null);
   const [pulse, setPulse] = useState<any>(null);
@@ -86,6 +88,8 @@ export default function Progress() {
 }
 
 function BarChart({ series, max, color }: { series?: any[]; max: number; color: string }) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const data = series || [];
   return (
     <Card>
@@ -100,7 +104,7 @@ function BarChart({ series, max, color }: { series?: any[]; max: number; color: 
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: any) => StyleSheet.create({
   wrap: { paddingHorizontal: spacing.xl, paddingTop: spacing.md },
   h: { fontSize: 28 },
   section: { marginTop: spacing.xl, fontSize: T.xl },

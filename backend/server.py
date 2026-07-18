@@ -8,6 +8,8 @@ import os
 import logging
 import random
 import math
+import hmac
+import hashlib
 from pathlib import Path
 from datetime import datetime, date, timezone, timedelta
 from typing import List, Optional, Annotated, Any
@@ -33,6 +35,35 @@ db = client[os.environ['DB_NAME']]
 SECRET_KEY = os.environ.get('JWT_SECRET', 'therapishots-dev-secret-change-in-prod')
 ALGORITHM = 'HS256'
 ACCESS_TOKEN_EXPIRE_DAYS = 30
+
+# ---- Twilio Verify (SMS OTP) ----
+TWILIO_ACCOUNT_SID = os.environ.get('TWILIO_ACCOUNT_SID')
+TWILIO_AUTH_TOKEN = os.environ.get('TWILIO_AUTH_TOKEN')
+TWILIO_VERIFY_SERVICE_SID = os.environ.get('TWILIO_VERIFY_SERVICE_SID')
+TWILIO_ENABLED = bool(TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_VERIFY_SERVICE_SID)
+_twilio_client = None
+if TWILIO_ENABLED:
+    try:
+        from twilio.rest import Client as _TwilioClient
+        _twilio_client = _TwilioClient(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+    except Exception as _e:
+        TWILIO_ENABLED = False
+
+# Whitelisted test numbers bypass the SMS provider and use a static code.
+# Lets the demo account + automated tests work without a real SMS.
+TEST_PHONES = {"+919999900000": "123456"}
+
+# ---- Razorpay (payments) ----
+RAZORPAY_KEY_ID = os.environ.get('RAZORPAY_KEY_ID')
+RAZORPAY_KEY_SECRET = os.environ.get('RAZORPAY_KEY_SECRET')
+RAZORPAY_ENABLED = bool(RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET)
+_razorpay_client = None
+if RAZORPAY_ENABLED:
+    try:
+        import razorpay as _razorpay
+        _razorpay_client = _razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
+    except Exception:
+        RAZORPAY_ENABLED = False
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("therapishots")
@@ -554,6 +585,44 @@ def _norm_phone(phone: str) -> str:
     return p
 
 
+def _ensure_indian_phone(phone: str) -> str:
+    """Normalise to E.164 for India (+91XXXXXXXXXX). Accepts a 10-digit number,
+    a 91-prefixed number, or an already +91-prefixed number. Rejects anything else."""
+    digits = "".join(ch for ch in (phone or "") if ch.isdigit())
+    if digits.startswith("0091"):
+        digits = digits[4:]
+    elif digits.startswith("91") and len(digits) == 12:
+        digits = digits[2:]
+    if len(digits) != 10 or digits[0] not in "6789":
+        raise HTTPException(status_code=400,
+                            detail="Please enter a valid Indian mobile number (10 digits).")
+    return "+91" + digits
+
+
+def _send_otp_sms(phone: str):
+    """Send an OTP via Twilio Verify. Test numbers are handled by the caller."""
+    if not TWILIO_ENABLED:
+        raise HTTPException(status_code=503, detail="SMS service is not configured.")
+    try:
+        _twilio_client.verify.v2.services(TWILIO_VERIFY_SERVICE_SID) \
+            .verifications.create(to=phone, channel="sms")
+    except Exception as e:
+        logger.warning(f"Twilio send failed for {phone}: {e}")
+        raise HTTPException(status_code=502, detail="Could not send verification code. Please try again.")
+
+
+def _check_otp_sms(phone: str, code: str) -> bool:
+    if not TWILIO_ENABLED:
+        return False
+    try:
+        check = _twilio_client.verify.v2.services(TWILIO_VERIFY_SERVICE_SID) \
+            .verification_checks.create(to=phone, code=code)
+        return check.status == "approved"
+    except Exception as e:
+        logger.warning(f"Twilio check failed for {phone}: {e}")
+        return False
+
+
 def _validate_18(dob_str: str):
     try:
         dob = datetime.strptime(dob_str, "%Y-%m-%d").date()
@@ -579,16 +648,9 @@ class VerifyOtpIn(BaseModel):
     code: str
 
 
-def mock_send_sms(phone: str, code: str):
-    # Swap this single function for Twilio later. Modular by design.
-    logger.info(f"[MOCK SMS] to {phone}: Your TherapiShots code is {code}")
-
-
 @api_router.post("/auth/request-otp")
 async def request_otp(body: RequestOtpIn):
-    phone = _norm_phone(body.phone)
-    if len(phone.replace("+", "")) < 8:
-        raise HTTPException(status_code=400, detail="Please enter a valid mobile number.")
+    phone = _ensure_indian_phone(body.phone)
     existing = await db.users.find_one({"phone": phone})
     pending = None
     if body.mode == "register":
@@ -619,22 +681,24 @@ async def request_otp(body: RequestOtpIn):
         except Exception:
             pass
 
-    code = f"{random.randint(0, 999999):06d}"
     now = datetime.now(timezone.utc)
-    await db.otps.update_one(
-        {"phone": phone},
-        {"$set": {"code": code, "expires_at": (now + timedelta(minutes=5)).isoformat(),
-                  "sent_at": now.isoformat(), "attempts": 0, "pending": pending}},
-        upsert=True,
-    )
-    mock_send_sms(phone, code)
-    # DEV ONLY: return the code so it can be shown in-app (no SMS provider yet)
-    return {"message": "Verification code sent.", "dev_code": code, "mock": True}
+    is_test = phone in TEST_PHONES
+    record = {"sent_at": now.isoformat(), "attempts": 0, "pending": pending,
+              "expires_at": (now + timedelta(minutes=10)).isoformat()}
+    if is_test:
+        record["test_code"] = TEST_PHONES[phone]
+    else:
+        _send_otp_sms(phone)
+    await db.otps.update_one({"phone": phone}, {"$set": record}, upsert=True)
+    resp = {"message": "Verification code sent."}
+    if is_test:
+        resp["dev_code"] = TEST_PHONES[phone]  # test numbers only
+    return resp
 
 
 @api_router.post("/auth/verify-otp")
 async def verify_otp(body: VerifyOtpIn):
-    phone = _norm_phone(body.phone)
+    phone = _ensure_indian_phone(body.phone)
     rec = await db.otps.find_one({"phone": phone})
     if not rec:
         raise HTTPException(status_code=400, detail="Code expired or not found. Please request a new one.")
@@ -649,7 +713,13 @@ async def verify_otp(body: VerifyOtpIn):
     if rec.get("attempts", 0) >= 5:
         await db.otps.delete_one({"_id": rec["_id"]})
         raise HTTPException(status_code=429, detail="Too many attempts. Please request a new code.")
-    if rec["code"] != body.code.strip():
+
+    code = body.code.strip()
+    if "test_code" in rec:
+        ok = code == rec["test_code"]
+    else:
+        ok = _check_otp_sms(phone, code)
+    if not ok:
         await db.otps.update_one({"_id": rec["_id"]}, {"$inc": {"attempts": 1}})
         raise HTTPException(status_code=401, detail="Incorrect code. Please try again.")
 
@@ -1039,12 +1109,17 @@ def gen_availability(slug: str):
     return slots
 
 
-class BookingIn(BaseModel):
+class BookingOrderIn(BaseModel):
     psychologist_id: str
     slot_id: str
     session_type: str
-    # mock payment token — real verification happens server-side with a provider later
-    payment_token: Optional[str] = "mock"
+
+
+class BookingVerifyIn(BaseModel):
+    booking_id: str
+    razorpay_order_id: str
+    razorpay_payment_id: str
+    razorpay_signature: str
 
 
 @api_router.get("/psychologists")
@@ -1080,45 +1155,104 @@ async def get_psychologist(pid: str, user: dict = Depends(get_current_user)):
     return p
 
 
-@api_router.post("/bookings")
-async def create_booking(body: BookingIn, user: dict = Depends(get_current_user)):
+def _resolve_booking(p: dict, slot_id: str, session_type: str):
+    slots = gen_availability(p["slug"])
+    slot = next((s for s in slots if s["id"] == slot_id), None)
+    if not slot:
+        raise HTTPException(status_code=400, detail="That slot is no longer available")
+    if session_type not in p.get("session_types", []):
+        raise HTTPException(status_code=400, detail="Unsupported session type")
+    price = p.get("short_call_price", p["price"]) if session_type == "15-min Call" else p["price"]
+    return slot, price
+
+
+@api_router.post("/bookings/order")
+async def create_booking_order(body: BookingOrderIn, user: dict = Depends(get_current_user)):
+    """Create a Razorpay order and a pending booking. Returns checkout params."""
+    if not RAZORPAY_ENABLED:
+        raise HTTPException(status_code=503, detail="Payments are not configured.")
     try:
         p = await db.psychologists.find_one({"_id": ObjectId(body.psychologist_id)})
     except Exception:
         p = None
     if not p:
         raise HTTPException(status_code=404, detail="Psychologist not found")
-    slots = gen_availability(p["slug"])
-    slot = next((s for s in slots if s["id"] == body.slot_id), None)
-    if not slot:
-        raise HTTPException(status_code=400, detail="That slot is no longer available")
-    if body.session_type not in p.get("session_types", []):
-        raise HTTPException(status_code=400, detail="Unsupported session type")
-    price = p.get("short_call_price", p["price"]) if body.session_type == "15-min Call" else p["price"]
-    # ---- MOCK PAYMENT (server-side confirmation stub) ----
-    payment = {
-        "status": "paid", "provider": "mock",
-        "amount": price, "currency": p.get("currency", "INR"),
-        "transaction_id": f"MOCK-{uuid_hex()}",
-        "note": "Simulated payment — no real charge. Replace with Razorpay/Stripe later.",
-    }
+    slot, price = _resolve_booking(p, body.slot_id, body.session_type)
+    currency = p.get("currency", "INR")
+    amount_paise = int(round(price * 100))
+    receipt = f"ts_{str(user['_id'])[-8:]}_{uuid_hex()[:8]}"[:40]
+    try:
+        order = _razorpay_client.order.create({
+            "amount": amount_paise, "currency": currency,
+            "receipt": receipt, "payment_capture": 1,
+        })
+    except Exception as e:
+        logger.warning(f"Razorpay order failed: {e}")
+        raise HTTPException(status_code=502, detail="Could not start payment. Please try again.")
     doc = {
         "user_id": user["id"], "psychologist_id": body.psychologist_id,
         "psychologist_name": p["name"], "slot_id": slot["id"],
         "slot_label": slot["label"], "slot_date": slot["date"], "slot_time": slot["time"],
-        "session_type": body.session_type, "price": price,
-        "currency": p.get("currency", "INR"), "status": "confirmed",
-        "payment": payment, "created_at": datetime.now(timezone.utc).isoformat(),
+        "session_type": body.session_type, "price": price, "currency": currency,
+        "status": "pending", "razorpay_order_id": order["id"],
+        "created_at": datetime.now(timezone.utc).isoformat(),
     }
     res = await db.bookings.insert_one(dict(doc))
-    doc["id"] = str(res.inserted_id)
-    doc.pop("_id", None)
-    return {"booking": doc, "message": "Your session is confirmed."}
+    return {
+        "booking_id": str(res.inserted_id),
+        "order_id": order["id"],
+        "amount": amount_paise,
+        "currency": currency,
+        "key_id": RAZORPAY_KEY_ID,
+        "name": "TherapiShots",
+        "description": f"{body.session_type} with {p['name']}",
+        "prefill": {"name": user.get("name", ""), "contact": (user.get("phone") or "").replace("+", ""),
+                    "email": user.get("email") or ""},
+    }
+
+
+@api_router.post("/bookings/verify")
+async def verify_booking_payment(body: BookingVerifyIn, user: dict = Depends(get_current_user)):
+    """Verify Razorpay payment signature server-side, then confirm the booking."""
+    try:
+        booking = await db.bookings.find_one({"_id": ObjectId(body.booking_id), "user_id": user["id"]})
+    except Exception:
+        booking = None
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    if booking.get("razorpay_order_id") != body.razorpay_order_id:
+        raise HTTPException(status_code=400, detail="Order mismatch")
+    # HMAC-SHA256(order_id|payment_id, key_secret)
+    expected = hmac.new(
+        RAZORPAY_KEY_SECRET.encode(),
+        f"{body.razorpay_order_id}|{body.razorpay_payment_id}".encode(),
+        hashlib.sha256,
+    ).hexdigest()
+    if not hmac.compare_digest(expected, body.razorpay_signature):
+        await db.bookings.update_one({"_id": booking["_id"]}, {"$set": {"status": "failed"}})
+        raise HTTPException(status_code=400, detail="Payment verification failed.")
+    payment = {
+        "status": "paid", "provider": "razorpay",
+        "amount": booking["price"], "currency": booking.get("currency", "INR"),
+        "razorpay_order_id": body.razorpay_order_id,
+        "razorpay_payment_id": body.razorpay_payment_id,
+    }
+    await db.bookings.update_one(
+        {"_id": booking["_id"]},
+        {"$set": {"status": "confirmed", "payment": payment,
+                  "confirmed_at": datetime.now(timezone.utc).isoformat()}},
+    )
+    booking["id"] = str(booking.pop("_id"))
+    booking["status"] = "confirmed"
+    booking["payment"] = payment
+    return {"booking": booking, "message": "Your session is confirmed."}
 
 
 @api_router.get("/bookings")
 async def list_bookings(user: dict = Depends(get_current_user)):
-    items = await db.bookings.find({"user_id": user["id"]}).sort("created_at", -1).to_list(100)
+    items = await db.bookings.find(
+        {"user_id": user["id"], "status": {"$in": ["confirmed", "cancelled"]}}
+    ).sort("created_at", -1).to_list(100)
     for b in items:
         b["id"] = str(b.pop("_id"))
     return {"bookings": items}

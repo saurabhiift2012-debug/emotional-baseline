@@ -5,10 +5,13 @@ import { useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { useApp } from "@/src/AppContext";
 import { OtpStep } from "./register";
-import { Screen, Display, AppText, PrimaryButton, GhostButton, colors, spacing, radius, font, T } from "@/src/ui";
+import { Logo } from "@/src/Logo";
+import { Screen, Display, AppText, PrimaryButton, GhostButton, spacing, radius, font, T, useTheme, useThemedStyles } from "@/src/ui";
 
 export default function Login() {
   const { t, requestOtp, verifyOtp } = useApp();
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const router = useRouter();
   const [step, setStep] = useState<"phone" | "otp">("phone");
   const [phone, setPhone] = useState("");
@@ -44,6 +47,7 @@ export default function Login() {
       <KeyboardAwareScrollView contentContainerStyle={styles.wrap} bottomOffset={20} keyboardShouldPersistTaps="handled">
         {step === "phone" ? (
           <>
+            <View style={{ alignItems: "center", marginBottom: spacing.xl }}><Logo size={64} /></View>
             <Display style={styles.title}>{t("log_in")}</Display>
             <AppText style={styles.label}>{t("mobile_number")}</AppText>
             <TextInput
@@ -69,7 +73,7 @@ export default function Login() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: any) => StyleSheet.create({
   back: { paddingHorizontal: spacing.xl, paddingTop: spacing.sm, height: 40, justifyContent: "center" },
   wrap: { paddingHorizontal: spacing.xl, paddingTop: spacing.md, paddingBottom: spacing["2xl"] },
   title: { fontSize: 30, marginBottom: spacing.xl },

@@ -4,12 +4,14 @@ import { useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { useApp } from "@/src/AppContext";
 import { api } from "@/src/api";
-import { Screen, Display, AppText, Card, Loading, IconChip, colors, spacing, radius, T } from "@/src/ui";
+import { Screen, Display, AppText, Card, Loading, IconChip, spacing, radius, T, useTheme, useThemedStyles } from "@/src/ui";
 
 const LANGS = ["", "English", "Hindi"];
 
 export default function Psychologists() {
   const { t } = useApp();
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const router = useRouter();
   const [list, setList] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -75,7 +77,7 @@ export default function Psychologists() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: any) => StyleSheet.create({
   header: { paddingHorizontal: spacing.xl, paddingTop: spacing.sm, gap: spacing.sm },
   title: { fontSize: 26 },
   filterRow: { flexDirection: "row", gap: spacing.sm, paddingHorizontal: spacing.xl, paddingVertical: spacing.md },

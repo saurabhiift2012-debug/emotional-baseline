@@ -4,7 +4,7 @@ import { useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useApp } from "@/src/AppContext";
-import { Screen, Display, AppText, Card, colors, spacing, radius, T } from "@/src/ui";
+import { Screen, Display, AppText, Card, spacing, radius, T, useTheme, useThemedStyles } from "@/src/ui";
 
 type Res = {
   key: string;
@@ -48,6 +48,8 @@ const RESOURCES: Res[] = [
 
 export default function Resources() {
   const { t, lang } = useApp();
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const router = useRouter();
   const [open, setOpen] = useState<string | null>("breathing");
 
@@ -91,7 +93,7 @@ export default function Resources() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: any) => StyleSheet.create({
   header: { paddingHorizontal: spacing.xl, paddingTop: spacing.sm, gap: spacing.sm, marginBottom: spacing.md },
   title: { fontSize: 26 },
   wrap: { paddingHorizontal: spacing.xl },

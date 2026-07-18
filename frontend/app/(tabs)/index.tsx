@@ -8,10 +8,12 @@ import { api } from "@/src/api";
 import { moodByKey } from "@/src/moods";
 import { MoodSelector } from "@/src/MoodSelector";
 import { MoodEmoji } from "@/src/MoodEmoji";
-import { Screen, Display, AppText, Card, SectionTitle, Loading, colors, spacing, radius, font, T } from "@/src/ui";
+import { Screen, Display, AppText, Card, SectionTitle, Loading, spacing, radius, font, T, useTheme, useThemedStyles } from "@/src/ui";
 
 export default function Today() {
   const { t, lang, moods, user } = useApp();
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const router = useRouter();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -151,7 +153,7 @@ export default function Today() {
 
         {/* Talk to someone — 15-min paid call, suggested when feeling low */}
         {data?.call_recommended && (
-          <Card tint="#EDE7F0" style={{ marginTop: spacing.lg }} testID="talk-card">
+          <Card tint={colors.tintLav} style={{ marginTop: spacing.lg }} testID="talk-card">
             <View style={styles.talkTag}>
               <Feather name="phone-call" size={12} color={colors.indigo} />
               <AppText style={styles.talkTagText}>{t("recommended_for_you")}</AppText>
@@ -186,7 +188,7 @@ export default function Today() {
 
         {/* One small step */}
         {step && (
-          <Card tint="#EAF0E6" style={{ marginTop: spacing.lg }}>
+          <Card tint={colors.tintSage} style={{ marginTop: spacing.lg }}>
             <View style={styles.obsHead}>
               <Feather name={step.icon} size={16} color={colors.sage} />
               <AppText style={[styles.obsHeadText, { color: colors.onSurfaceSecondary }]}>{t("one_small_step")}</AppText>
@@ -212,16 +214,16 @@ function fmtTime(iso?: string) {
   }
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: any) => StyleSheet.create({
   wrap: { paddingHorizontal: spacing.xl, paddingTop: spacing.md },
   greet: { color: colors.onSurfaceSecondary, fontSize: T.lg },
   name: { fontSize: 28, marginTop: 2 },
   banner: { backgroundColor: colors.surfaceSecondary, borderRadius: radius.lg, padding: spacing.lg, marginTop: spacing.lg },
   hero: { backgroundColor: colors.surfaceSecondary, borderRadius: radius.lg, padding: spacing.lg, marginTop: spacing.lg },
   heroHint: { color: colors.onSurfaceSecondary, fontSize: T.base, marginTop: 4 },
-  savedPill: { flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start", backgroundColor: "#E7EEE3", borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: 6, marginTop: spacing.sm },
+  savedPill: { flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start", backgroundColor: colors.tintSage, borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: 6, marginTop: spacing.sm },
   savedPillText: { color: colors.onSurface, fontSize: T.sm, fontWeight: "600" },
-  lowPrompt: { backgroundColor: "#EDE7F0", borderRadius: radius.md, padding: spacing.lg, marginTop: spacing.md },
+  lowPrompt: { backgroundColor: colors.tintLav, borderRadius: radius.md, padding: spacing.lg, marginTop: spacing.md },
   lowPromptThanks: { color: colors.onSurfaceSecondary, fontSize: T.sm, marginBottom: 2 },
   lowPromptText: { color: colors.onSurface, fontSize: T.lg, fontWeight: "500", marginBottom: spacing.md },
   lowPromptRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },

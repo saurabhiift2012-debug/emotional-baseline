@@ -5,10 +5,12 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useApp } from "@/src/AppContext";
 import { api } from "@/src/api";
-import { Screen, Display, AppText, Card, Loading, colors, spacing, radius, T } from "@/src/ui";
+import { Screen, Display, AppText, Card, Loading, spacing, radius, T, useTheme, useThemedStyles } from "@/src/ui";
 
 export default function Appointments() {
   const { t } = useApp();
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const router = useRouter();
   const [list, setList] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -65,6 +67,8 @@ export default function Appointments() {
 }
 
 function Row({ icon, text }: { icon: any; text: string }) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.row}>
       <Feather name={icon} size={16} color={colors.onSurfaceSecondary} />
@@ -73,7 +77,7 @@ function Row({ icon, text }: { icon: any; text: string }) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: any) => StyleSheet.create({
   header: { paddingHorizontal: spacing.xl, paddingTop: spacing.sm, gap: spacing.sm, marginBottom: spacing.md },
   title: { fontSize: 26 },
   wrap: { paddingHorizontal: spacing.xl },
@@ -81,8 +85,8 @@ const styles = StyleSheet.create({
   topRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: spacing.sm },
   name: { fontSize: T.lg, fontWeight: "600", color: colors.onSurface },
   status: { borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: 3 },
-  statusOk: { backgroundColor: "#E7EEE3" },
-  statusCancel: { backgroundColor: "#F3E6E2" },
+  statusOk: { backgroundColor: colors.tintSage },
+  statusCancel: { backgroundColor: colors.tintRose },
   statusText: { fontSize: T.sm, fontWeight: "600" },
   row: { flexDirection: "row", alignItems: "center", gap: spacing.md, paddingVertical: 5 },
   rowText: { fontSize: T.base, color: colors.onSurface },

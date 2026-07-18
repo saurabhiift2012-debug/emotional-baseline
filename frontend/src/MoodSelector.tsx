@@ -3,12 +3,14 @@ import { View, Text, Pressable, StyleSheet, useWindowDimensions } from "react-na
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
-import { colors, spacing, font, T } from "./ui";
+import { spacing, font, T, useTheme, useThemedStyles } from "./ui";
 import { Mood, MOOD_COLORS } from "./moods";
 import { MoodEmoji } from "./MoodEmoji";
 import { Lang } from "./i18n";
 
 function MoodTile({ mood, selected, onPress, lang, size }: { mood: Mood; selected: boolean; onPress: () => void; lang: Lang; size: number }) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const scale = useSharedValue(1);
   const anim = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
   const palette = MOOD_COLORS[mood.key] || { from: colors.surfaceSecondary, to: colors.surfaceSecondary, accent: colors.amber };
@@ -57,6 +59,7 @@ function MoodTile({ mood, selected, onPress, lang, size }: { mood: Mood; selecte
 
 export function MoodSelector({ moods, value, onChange, lang, pad }: { moods: Mood[]; value: string | null; onChange: (key: string) => void; lang: Lang; pad?: number }) {
   const { width } = useWindowDimensions();
+  const styles = useThemedStyles(makeStyles);
   const cols = 3;
   const gap = spacing.md;
   const horizontalPad = pad ?? spacing.xl * 2;
@@ -78,7 +81,7 @@ export function MoodSelector({ moods, value, onChange, lang, pad }: { moods: Moo
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: any) => StyleSheet.create({
   grid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between" },
   tile: {
     borderRadius: 22,

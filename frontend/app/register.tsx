@@ -4,10 +4,13 @@ import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { useApp } from "@/src/AppContext";
-import { Screen, Display, AppText, PrimaryButton, GhostButton, colors, spacing, radius, font, T } from "@/src/ui";
+import { Logo } from "@/src/Logo";
+import { Screen, Display, AppText, PrimaryButton, GhostButton, spacing, radius, font, T, useTheme, useThemedStyles } from "@/src/ui";
 
 export default function Register() {
   const { t, lang, requestOtp, verifyOtp } = useApp();
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const router = useRouter();
   const [step, setStep] = useState<"details" | "otp">("details");
   const [name, setName] = useState("");
@@ -46,6 +49,7 @@ export default function Register() {
       <KeyboardAwareScrollView contentContainerStyle={styles.wrap} bottomOffset={20} keyboardShouldPersistTaps="handled">
         {step === "details" ? (
           <>
+            <View style={{ alignItems: "center", marginBottom: spacing.lg }}><Logo size={60} /></View>
             <Display style={styles.title}>{t("create_account")}</Display>
 
             <AppText style={styles.label}>{t("name")}</AppText>
@@ -75,6 +79,8 @@ export default function Register() {
 }
 
 export function OtpStep({ t, phone, code, setCode, devCode, err, busy, onVerify, onResend, onChangeNumber }: any) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   return (
     <>
       <Display style={styles.title}>{t("enter_code")}</Display>
@@ -106,7 +112,7 @@ export function OtpStep({ t, phone, code, setCode, devCode, err, busy, onVerify,
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: any) => StyleSheet.create({
   back: { paddingHorizontal: spacing.xl, paddingTop: spacing.sm, height: 40, justifyContent: "center" },
   wrap: { paddingHorizontal: spacing.xl, paddingTop: spacing.md, paddingBottom: spacing["2xl"] },
   title: { fontSize: 30, marginBottom: spacing.lg },
@@ -124,7 +130,7 @@ const styles = StyleSheet.create({
   },
   err: { color: colors.rose, marginTop: spacing.md },
   note: { fontSize: T.sm, color: colors.onSurfaceSecondary, marginVertical: spacing.lg, lineHeight: 18 },
-  devBox: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#EAEFF6", borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.lg },
+  devBox: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.tintInfo, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.lg },
   devText: { color: colors.indigo, fontSize: T.sm, fontWeight: "600" },
   otpActions: { flexDirection: "row", justifyContent: "space-between", marginTop: spacing.lg },
   linkText: { color: colors.indigo, fontWeight: "600", fontSize: T.base, padding: spacing.sm },

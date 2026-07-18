@@ -8,7 +8,8 @@ import * as Sharing from "expo-sharing";
 import { useApp } from "@/src/AppContext";
 import { api } from "@/src/api";
 import { moodByKey } from "@/src/moods";
-import { Screen, Display, AppText, Card, SectionTitle, colors, spacing, radius, T } from "@/src/ui";
+import { Screen, Display, AppText, Card, SectionTitle, spacing, radius, T, useTheme, useThemedStyles } from "@/src/ui";
+import { ThemePref } from "@/src/ThemeContext";
 
 const CONSENTS = [
   "health_data", "psychologist_sharing",
@@ -16,6 +17,8 @@ const CONSENTS = [
 
 export default function Me() {
   const { t, lang, user, moods, setLang, logout, updateConsents } = useApp();
+  const { colors, pref, setPref } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const router = useRouter();
   const [consents, setConsents] = useState<Record<string, boolean>>(user?.consents || {});
   const [savedMsg, setSavedMsg] = useState(false);
@@ -56,7 +59,7 @@ export default function Me() {
         <AppText style={styles.email}>{user?.phone}{user?.email ? ` · ${user.email}` : ""}</AppText>
 
         {/* Privacy center */}
-        <Card tint="#F5E9D8" style={{ marginTop: spacing.lg }}>
+        <Card tint={colors.tintWarm} style={{ marginTop: spacing.lg }}>
           <View style={styles.privacyHead}>
             <Feather name="shield" size={20} color={colors.indigo} />
             <View style={{ flex: 1, marginLeft: spacing.md }}>
@@ -72,6 +75,16 @@ export default function Me() {
           {(["en", "hi"] as const).map((l) => (
             <Pressable key={l} testID={`me-lang-${l}`} onPress={() => setLang(l)} style={[styles.langPill, lang === l && styles.langActive]}>
               <AppText style={[styles.langText, lang === l && styles.langTextActive]}>{l === "en" ? "English" : "हिन्दी"}</AppText>
+            </Pressable>
+          ))}
+        </View>
+
+        {/* Appearance */}
+        <SectionTitle style={styles.section}>{t("appearance")}</SectionTitle>
+        <View style={styles.langRow}>
+          {(["system", "light", "dark"] as ThemePref[]).map((p) => (
+            <Pressable key={p} testID={`me-theme-${p}`} onPress={() => { Haptics.selectionAsync(); setPref(p); }} style={[styles.langPill, pref === p && styles.langActive]}>
+              <AppText style={[styles.langText, pref === p && styles.langTextActive]}>{t(`theme_${p}`)}</AppText>
             </Pressable>
           ))}
         </View>
@@ -110,6 +123,8 @@ export default function Me() {
 }
 
 function ActionRow({ icon, label, onPress, danger, testID }: { icon: any; label: string; onPress: () => void; danger?: boolean; testID?: string }) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   return (
     <Pressable testID={testID} onPress={onPress} style={({ pressed }) => [styles.action, { opacity: pressed ? 0.8 : 1 }]}>
       <Feather name={icon} size={18} color={danger ? colors.rose : colors.onSurface} />
@@ -157,7 +172,7 @@ function buildExportHtml(data: any, moods: any[], lang: "en" | "hi") {
 }
 
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: any) => StyleSheet.create({
   wrap: { paddingHorizontal: spacing.xl, paddingTop: spacing.md },
   h: { fontSize: 28 },
   email: { color: colors.onSurfaceSecondary, marginTop: 2 },

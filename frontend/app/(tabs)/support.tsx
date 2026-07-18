@@ -4,10 +4,12 @@ import { useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, withSequence, Easing, useReducedMotion } from "react-native-reanimated";
 import { useApp } from "@/src/AppContext";
-import { Screen, Display, AppText, Card, SectionTitle, colors, spacing, radius, T } from "@/src/ui";
+import { Screen, Display, AppText, Card, SectionTitle, spacing, radius, T, useTheme, useThemedStyles } from "@/src/ui";
 
 export default function Support() {
   const { t } = useApp();
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const router = useRouter();
   const scale = useSharedValue(0.7);
   const reduced = useReducedMotion();
@@ -56,7 +58,7 @@ export default function Support() {
 
         {/* Emergency */}
         <SectionTitle style={styles.section}>{t("emergency")}</SectionTitle>
-        <Card tint="#F3E6E2">
+        <Card tint={colors.tintRose}>
           <AppText style={{ color: colors.onSurface, lineHeight: 22 }}>{t("emergency_note")}</AppText>
           <View style={styles.emRow}>
             <Pressable testID="emergency-112" onPress={() => Linking.openURL("tel:112")} style={styles.emBtn}>
@@ -77,7 +79,7 @@ export default function Support() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: any) => StyleSheet.create({
   wrap: { paddingHorizontal: spacing.xl, paddingTop: spacing.md },
   h: { fontSize: 26, lineHeight: 34 },
   breatheBox: { alignItems: "center", justifyContent: "center", height: 220, marginVertical: spacing.lg },

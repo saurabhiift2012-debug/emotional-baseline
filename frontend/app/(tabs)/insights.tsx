@@ -7,10 +7,12 @@ import { useApp } from "@/src/AppContext";
 import { api } from "@/src/api";
 import { moodByKey, GROUP_TINT } from "@/src/moods";
 import { MoodEmoji } from "@/src/MoodEmoji";
-import { Screen, Display, AppText, Card, SectionTitle, Loading, ConfidenceBadge, colors, spacing, radius, T } from "@/src/ui";
+import { Screen, Display, AppText, Card, SectionTitle, Loading, ConfidenceBadge, spacing, radius, T, useTheme, useThemedStyles } from "@/src/ui";
 
 export default function Insights() {
   const { t, lang, moods } = useApp();
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -111,7 +113,7 @@ function fbLabel(k: string, t: (s: string) => string) {
   return k === "yes" ? t("yes") : k === "maybe" ? t("maybe") : t("not_really");
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: any) => StyleSheet.create({
   wrap: { paddingHorizontal: spacing.xl, paddingTop: spacing.md },
   eyebrow: { color: colors.onSurfaceSecondary, fontSize: T.sm, textTransform: "uppercase", letterSpacing: 1 },
   q: { fontSize: 26, lineHeight: 34, marginTop: 4 },

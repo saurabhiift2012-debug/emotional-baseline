@@ -15,7 +15,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#000000"
+        "backgroundColor": "#FAF7F2"
       },
       "edgeToEdgeEnabled": true,
       "package": "com.emergent.emotionalbaseline.jqthw9"
@@ -33,7 +33,7 @@
           "image": "./assets/images/splash-image.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#000000"
+          "backgroundColor": "#FAF7F2"
         }
       ]
     ],

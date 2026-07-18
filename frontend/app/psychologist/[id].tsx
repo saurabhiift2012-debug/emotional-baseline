@@ -5,10 +5,13 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useApp } from "@/src/AppContext";
 import { api } from "@/src/api";
-import { Screen, Display, AppText, Card, Loading, PrimaryButton, colors, spacing, radius, T } from "@/src/ui";
+import { Screen, Display, AppText, Card, Loading, PrimaryButton, spacing, radius, T, useTheme, useThemedStyles } from "@/src/ui";
+import { RazorpayCheckout, RzpOrder, RzpSuccess } from "@/src/RazorpayCheckout";
 
 export default function PsychologistDetail() {
   const { t } = useApp();
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [p, setP] = useState<any>(null);
@@ -17,6 +20,8 @@ export default function PsychologistDetail() {
   const [sessionType, setSessionType] = useState<string | null>(null);
   const [booking, setBooking] = useState(false);
   const [confirmed, setConfirmed] = useState<any>(null);
+  const [order, setOrder] = useState<RzpOrder | null>(null);
+  const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -29,14 +34,23 @@ export default function PsychologistDetail() {
     })();
   }, [id]);
 
-  const book = async () => {
+  const startPayment = async () => {
     if (!slot || !sessionType) return;
-    setBooking(true);
+    setErr(null); setBooking(true);
     try {
-      const res = await api.post("/bookings", { psychologist_id: id, slot_id: slot, session_type: sessionType, payment_token: "mock" });
+      const res = await api.post("/bookings/order", { psychologist_id: id, slot_id: slot, session_type: sessionType });
+      setOrder(res);
+    } catch (e: any) { setErr(e.message || t("payment_failed")); }
+    finally { setBooking(false); }
+  };
+
+  const onPaid = async (data: RzpSuccess, bookingId: string) => {
+    setOrder(null); setBooking(true);
+    try {
+      const res = await api.post("/bookings/verify", { booking_id: bookingId, ...data });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setConfirmed(res.booking);
-    } catch {}
+    } catch (e: any) { setErr(e.message || t("payment_failed")); }
     finally { setBooking(false); }
   };
 
@@ -58,9 +72,8 @@ export default function PsychologistDetail() {
             <AppText style={styles.cName}>{confirmed.psychologist_name}</AppText>
             <Row icon="clock" text={confirmed.slot_label} />
             <Row icon="video" text={confirmed.session_type} />
-            <Row icon="credit-card" text={`₹${confirmed.price} · ${t("paid")} (${confirmed.payment.provider})`} />
+            <Row icon="credit-card" text={`₹${confirmed.price} · ${t("paid_via")}`} />
           </Card>
-          <AppText style={styles.mockNote}>{t("payment_mock_note")}</AppText>
           <View style={{ height: spacing.lg }} />
           <PrimaryButton testID="view-appointments-button" label={t("view_appointments")} onPress={() => { router.back(); router.push("/appointments"); }} />
           <Pressable testID="confirm-close" onPress={() => router.back()} style={styles.closeBtn}><AppText style={styles.closeText}>{t("done")}</AppText></Pressable>
@@ -113,21 +126,30 @@ export default function PsychologistDetail() {
           ))}
         </View>
 
-        <AppText style={styles.mockNote}>{t("payment_mock_note")}</AppText>
+        <AppText style={styles.mockNote}>{t("payment_secure_note")}</AppText>
+        {err ? <AppText testID="booking-error" style={styles.err}>{err}</AppText> : null}
         <View style={{ height: spacing.md }} />
         <PrimaryButton
           testID="confirm-pay-button"
-          label={`${t("confirm_pay")} · ₹${selectedPrice}`}
+          label={`${t("pay_now")} · ₹${selectedPrice}`}
           disabled={!slot || !sessionType || booking}
-          onPress={book}
+          onPress={startPayment}
         />
         <View style={{ height: spacing.xl }} />
       </ScrollView>
+      <RazorpayCheckout
+        order={order}
+        onSuccess={onPaid}
+        onDismiss={() => { setOrder(null); }}
+        onError={(msg) => { setOrder(null); setErr(msg || t("payment_failed")); }}
+      />
     </Screen>
   );
 }
 
 function Row({ icon, text }: { icon: any; text: string }) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.confRow}>
       <Feather name={icon} size={16} color={colors.onSurfaceSecondary} />
@@ -136,7 +158,7 @@ function Row({ icon, text }: { icon: any; text: string }) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: any) => StyleSheet.create({
   header: { paddingHorizontal: spacing.xl, paddingTop: spacing.sm, height: 40, justifyContent: "center" },
   wrap: { paddingHorizontal: spacing.xl, paddingTop: spacing.md },
   top: { alignItems: "center" },
@@ -160,6 +182,7 @@ const styles = StyleSheet.create({
   slotText: { fontSize: T.base, color: colors.onSurface },
   slotTextActive: { color: colors.onSurface, fontWeight: "600" },
   mockNote: { fontSize: T.sm, color: colors.onSurfaceSecondary, fontStyle: "italic", marginTop: spacing.lg },
+  err: { color: colors.rose, marginTop: spacing.md },
   confirmWrap: { paddingHorizontal: spacing.xl, paddingTop: spacing["3xl"], alignItems: "center" },
   confirmIcon: { width: 72, height: 72, borderRadius: 36, backgroundColor: colors.sage, alignItems: "center", justifyContent: "center", marginBottom: spacing.lg },
   confirmTitle: { fontSize: 26, textAlign: "center" },

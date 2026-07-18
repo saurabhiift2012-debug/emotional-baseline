@@ -3,7 +3,8 @@ import { Tabs } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { Platform } from "react-native";
 import { useApp } from "@/src/AppContext";
-import { colors, font } from "@/src/theme";
+import { useTheme } from "@/src/ThemeContext";
+import { font } from "@/src/theme";
 
 const ICONS: Record<string, any> = {
   index: "sun",
@@ -15,6 +16,7 @@ const ICONS: Record<string, any> = {
 
 export default function TabsLayout() {
   const { t } = useApp();
+  const { colors } = useTheme();
   const labels: Record<string, string> = {
     index: t("tab_today"),
     insights: t("tab_insights"),

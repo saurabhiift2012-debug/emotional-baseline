@@ -4,10 +4,13 @@ import { useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useApp } from "@/src/AppContext";
-import { Screen, Display, AppText, PrimaryButton, GhostButton, colors, spacing, radius, font, T } from "@/src/ui";
+import { Logo } from "@/src/Logo";
+import { Screen, Display, AppText, PrimaryButton, GhostButton, spacing, radius, font, T, useTheme, useThemedStyles } from "@/src/ui";
 
 export default function Onboarding() {
   const { t, lang, setLang } = useApp();
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const router = useRouter();
   const [confirmed, setConfirmed] = useState(false);
 
@@ -30,9 +33,7 @@ export default function Onboarding() {
         </View>
 
         <View style={styles.hero}>
-          <View style={styles.logoDot}>
-            <Feather name="sunrise" size={30} color={colors.surface} />
-          </View>
+          <Logo size={84} />
           <Display style={styles.title}>{t("app_name")}</Display>
           <AppText style={styles.tagline}>{t("tagline")}</AppText>
         </View>
@@ -65,7 +66,7 @@ export default function Onboarding() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: any) => StyleSheet.create({
   wrap: { flex: 1, paddingHorizontal: spacing.xl, paddingTop: spacing.md, paddingBottom: spacing.lg },
   langRow: { flexDirection: "row", justifyContent: "flex-end", gap: spacing.sm },
   langPill: { width: 46, height: 34, borderRadius: radius.pill, alignItems: "center", justifyContent: "center", backgroundColor: colors.surfaceSecondary },

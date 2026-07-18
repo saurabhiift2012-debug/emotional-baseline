@@ -4,10 +4,12 @@ import { useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { useApp } from "@/src/AppContext";
 import { api } from "@/src/api";
-import { Screen, Display, AppText, Card, Loading, colors, spacing, radius, T } from "@/src/ui";
+import { Screen, Display, AppText, Card, Loading, spacing, radius, T, useTheme, useThemedStyles } from "@/src/ui";
 
 export default function Story() {
   const { t } = useApp();
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const router = useRouter();
   const [period, setPeriod] = useState<"week" | "month">("week");
   const [data, setData] = useState<any>(null);
@@ -58,7 +60,7 @@ export default function Story() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: any) => StyleSheet.create({
   header: { paddingHorizontal: spacing.xl, paddingTop: spacing.sm, height: 44, justifyContent: "center" },
   wrap: { paddingHorizontal: spacing.xl, paddingBottom: spacing["2xl"] },
   h: { fontSize: 28, marginBottom: spacing.lg },

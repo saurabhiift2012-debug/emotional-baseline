@@ -8,12 +8,14 @@ import { useApp } from "@/src/AppContext";
 import { api } from "@/src/api";
 import { MoodSelector } from "@/src/MoodSelector";
 import { CONTEXT_TAGS } from "@/src/moods";
-import { Screen, Display, AppText, PrimaryButton, GhostButton, IconChip, colors, spacing, radius, font, T } from "@/src/ui";
+import { Screen, Display, AppText, PrimaryButton, GhostButton, IconChip, spacing, radius, font, T, useTheme, useThemedStyles } from "@/src/ui";
 
 type Step = "mood" | "context" | "done";
 
 export default function CheckIn() {
   const { t, lang, moods } = useApp();
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const router = useRouter();
   const [step, setStep] = useState<Step>("mood");
   const [mood, setMood] = useState<string | null>(null);
@@ -127,6 +129,8 @@ export default function CheckIn() {
 }
 
 function OptionRow({ icon, label, onPress, testID }: { icon: any; label: string; onPress: () => void; testID?: string }) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   return (
     <Pressable testID={testID} onPress={onPress} style={({ pressed }) => [styles.optRow, { opacity: pressed ? 0.8 : 1 }]}>
       <View style={styles.optIcon}>
@@ -138,7 +142,7 @@ function OptionRow({ icon, label, onPress, testID }: { icon: any; label: string;
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: any) => StyleSheet.create({
   header: { paddingHorizontal: spacing.xl, paddingTop: spacing.sm, height: 44, justifyContent: "center" },
   body: { paddingHorizontal: spacing.xl, paddingTop: spacing.md, paddingBottom: 120 },
   q: { fontSize: 26, lineHeight: 34 },
