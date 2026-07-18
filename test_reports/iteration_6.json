@@ -1,0 +1,33 @@
+{
+  "summary": "REMOVE-HEALTH-INSIGHTS iteration PASSED end-to-end. Backend: 43/43 pytest cases green (6 new tests added for this iteration). Frontend: mobile viewport (390x844) verified via Playwright — demo phone +919999900000 OTP login worked (dev_code-box shown, verify & continue) → Insights tab. Insights screen visually confirmed to render ONLY 'Patterns worth noticing' (1 weekday emerging pattern: 'Your mood has tended to be lower on Tuesdays.') and 'Context patterns' (3 early-signal context items — Money / Health / Work) plus the 7-day daily mood strip. Zero occurrences of the removed 'What seems to help' or 'What may make things harder' section titles in the rendered body. Confidence badges (4), 'Why am I seeing this?' expanders (4), and Yes/Maybe/Not-really feedback buttons (12) all wired to /api/feedback. Today screen observation on demo user reads 'Money has appeared frequently in your lower-mood check-ins.' — mood/context based, contains none of the banned words (sleep|steps|activity|heart|hrv). Story template no longer contains 'sleep and movement' and top_helps/top_harder are empty arrays. daily_moods still returns exactly 7 entries. Regressions kept green via existing pytest coverage: OTP login (demo + fresh), multiple check-ins per day, call_recommended flag, psychologists 15-min booking with mock payment, cancel booking, auth enforcement on all protected endpoints.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_therapishots_api.py",
+    "/app/test_reports/pytest/pytest_results.xml",
+    "/app/test_reports/iteration_6.json"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py build_insights (line 343): correctly returns helps=[] and harder=[] as literal empty lists; only weekday-based notice (from reported mood) and context-tag patterns are computed. No sleep_minutes / steps / hrv / rhr correlations are referenced anywhere in the returned insight objects.",
+    "server.py today_observation (line 463): now sources exclusively from build_insights['context'] → build_insights['notice'] → mood-baseline delta. No health words possible in any branch.",
+    "server.py _story_template (line 940): removed 'sleep and movement' closing. Empty top_helps/top_harder lists simply skip those for-loops, so the template stays coherent for both week & month periods.",
+    "server.py /story facts: top_helps and top_harder derive from ins['helps'][:2] / ins['harder'][:1] which are now always []. Verified in test_story_template_no_sleep_and_movement.",
+    "insights.tsx: renderGroup is called only for ins.notice ('Patterns worth noticing') and ins.context ('Context patterns'). helps/harder are still kept in the local `ins` shape default and counted into `total` for the empty-state check — harmless because backend guarantees them empty.",
+    "Minor (non-blocking): insights.tsx line 27 destructures `helps: [], harder: []` in the fallback shape but never renders them; consider removing from the default to avoid confusion — spec-compliant either way."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_therapishots_api.py (added TestInsightsHealthRemoved, TestTodayObservationMoodBased, TestStoryNoHealthReference — 6 new test cases)"
+  ],
+  "success_rate": {"backend": "100% (43/43 pytest)", "frontend": "100% of tested flows (OTP login, Insights render, banned-title absence, 7-day strip, confidence badges, why-toggles, feedback buttons)"},
+  "seed_data_creation": "None. Demo phone +919999900000 with ~6 weeks seeded weekday-biased + context-tagged history is created idempotently at backend startup.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Insights screen now renders 2 sections only: 'Patterns worth noticing' (weekday) and 'Context patterns' (user context chips). The 7-day mood strip (data-testid=daily-mood-strip) always renders. Empty state (data-testid absent) only when total insights == 0 for brand-new users. Backend build_insights returns helps=[] and harder=[] unconditionally by design — any future test that asserts helps/harder populated is stale.",
+  "rca_of_issue": "N/A — all spec items pass."
+}

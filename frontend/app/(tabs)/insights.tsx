@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from "react";
-import { View, Text, StyleSheet, ScrollView, Pressable, Image } from "react-native";
+import { View, StyleSheet, ScrollView, Pressable, Image } from "react-native";
 import { useFocusEffect } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -96,8 +96,6 @@ export default function Insights() {
           </View>
         ) : (
           <>
-            {renderGroup(t("what_helps"), ins.helps)}
-            {renderGroup(t("what_harder"), ins.harder)}
             {renderGroup(t("patterns_notice"), ins.notice)}
             {renderGroup(t("context_patterns"), ins.context)}
             <AppText style={styles.disclaimer}>{t("not_medical")}</AppText>

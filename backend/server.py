@@ -341,61 +341,12 @@ METRIC_LABELS = {
 
 
 def build_insights(checkins, health_by_date):
-    """Deterministic pattern engine. Returns categorised insight cards."""
+    """Deterministic pattern engine — uses ONLY what the user actively provides
+    (their mood over time and the context chips they choose). Passively-collected
+    health metrics are intentionally NOT surfaced here."""
     helps, harder, notice, context_patterns = [], [], [], []
 
-    paired = [(c, health_by_date.get(c['date'])) for c in checkins]
-    paired = [(c, h) for c, h in paired if h]
-
-    # mood vs each health metric (same-day)
-    for metric in ["sleep_minutes", "steps", "activity_minutes", "hrv", "resting_hr"]:
-        xs = [h[metric] for _, h in paired]
-        ys = [c['mood_value'] for c, _ in paired]
-        n = len(xs)
-        r = _pearson(xs, ys)
-        conf = confidence_from(n, r)
-        if not conf:
-            continue
-        label = METRIC_LABELS[metric]['en']
-        higher_better = r > 0
-        # resting_hr is inverse (lower rhr ~ better) so flip interpretation
-        if metric == "resting_hr":
-            if r < 0:
-                helps.append(_insight(f"mood_{metric}", conf,
-                             f"Your mood has often been higher on days with a lower resting heart rate.",
-                             n, r, metric))
-            else:
-                harder.append(_insight(f"mood_{metric}", conf,
-                             f"Higher resting heart rate and lower mood have appeared together.",
-                             n, r, metric))
-            continue
-        if higher_better:
-            helps.append(_insight(f"mood_{metric}", conf,
-                         f"Your mood has often been higher on days following more {label}.",
-                         n, r, metric))
-        else:
-            harder.append(_insight(f"mood_{metric}", conf,
-                         f"Lower mood and less {label} have appeared together more frequently.",
-                         n, r, metric))
-
-    # previous-night sleep -> next-day mood
-    prev_pairs = []
-    dates_sorted = sorted({c['date'] for c in checkins})
-    checkin_by_date = {c['date']: c for c in checkins}
-    for ds in dates_sorted:
-        d = date.fromisoformat(ds)
-        prev = (d - timedelta(days=1)).isoformat()
-        if prev in health_by_date and ds in checkin_by_date:
-            prev_pairs.append((health_by_date[prev]['sleep_minutes'], checkin_by_date[ds]['mood_value']))
-    if len(prev_pairs) >= 7:
-        r = _pearson([p[0] for p in prev_pairs], [p[1] for p in prev_pairs])
-        conf = confidence_from(len(prev_pairs), r)
-        if conf and r > 0:
-            helps.append(_insight("prevsleep_mood", conf,
-                         "On days following longer sleep, you've often reported feeling better.",
-                         len(prev_pairs), r, "sleep_minutes"))
-
-    # day of week
+    # day of week (based purely on reported mood)
     by_wd = {}
     for c in checkins:
         wd = date.fromisoformat(c['date']).weekday()
@@ -510,19 +461,23 @@ def pick_small_step(last_mood_value: Optional[int]) -> dict:
 
 
 def today_observation(checkins, health_by_date):
-    """One gentle observation for the Today screen (deterministic)."""
+    """One gentle, mood-based observation for the Today screen (deterministic).
+    Uses only the user's own reported mood + context — no health metrics."""
     if len(checkins) < 5:
         return None
-    healths = list(health_by_date.values())
-    base_sleep = np.mean([h['sleep_minutes'] for h in healths])
-    today = date.today().isoformat()
-    yesterday = (date.today() - timedelta(days=1)).isoformat()
-    hd = health_by_date.get(today) or health_by_date.get(yesterday)
-    if hd and hd['sleep_minutes'] < base_sleep - 40:
-        return "Your sleep was shorter than your usual pattern last night."
     ins = build_insights(checkins, health_by_date)
-    if ins['helps']:
-        return ins['helps'][0]['text']
+    if ins['context']:
+        return ins['context'][0]['text']
+    if ins['notice']:
+        return ins['notice'][0]['text']
+    # gentle recent mood-trend note vs personal baseline
+    ordered = sorted(checkins, key=lambda c: c['date'])
+    baseline = np.mean([c['mood_value'] for c in ordered])
+    recent = [c['mood_value'] for c in ordered[-5:]]
+    if np.mean(recent) >= baseline + 0.5:
+        return "Your recent check-ins have been a little brighter than your usual pattern."
+    if np.mean(recent) <= baseline - 0.5:
+        return "Your recent check-ins have been a little lower than your usual pattern."
     return None
 
 
@@ -998,7 +953,7 @@ def _story_template(f, period) -> str:
         parts.append(t)
     for t in f['context_patterns']:
         parts.append(t)
-    parts.append("Your recent patterns suggest that sleep and movement may be worth paying attention to.")
+    parts.append("Keep checking in — noticing how you feel is a small step worth repeating.")
     return " ".join(parts)
 
 

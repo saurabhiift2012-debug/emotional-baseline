@@ -358,3 +358,88 @@ class TestAuthEnforcement:
     def test_endpoint_requires_auth(self, session, path):
         r = session.get(f"{API}{path}", timeout=15)
         assert r.status_code in (401, 403)
+
+
+
+# ---------- REMOVE-HEALTH-INSIGHTS iteration checks ----------
+BANNED_OBS_WORDS = ("sleep", "steps", "activity", "heart", "hrv")
+
+
+def _demo_headers(session):
+    r = _request_otp(session, phone=DEMO_PHONE, mode="login")
+    assert r.status_code == 200, r.text
+    code = r.json()["dev_code"]
+    v = session.post(f"{API}/auth/verify-otp",
+                     json={"phone": DEMO_PHONE, "code": code}, timeout=15).json()
+    return {"Authorization": f"Bearer {v['token']}", "Content-Type": "application/json"}
+
+
+class TestInsightsHealthRemoved:
+    """helps + harder must ALWAYS be empty; notice/context may be populated."""
+
+    def test_new_user_insights_helps_harder_empty(self, session, auth_headers):
+        r = session.get(f"{API}/insights", headers=auth_headers, timeout=15)
+        assert r.status_code == 200
+        ins = r.json()["insights"]
+        assert ins["helps"] == [] and ins["harder"] == []
+        assert isinstance(ins.get("notice"), list) and isinstance(ins.get("context"), list)
+
+    def test_demo_user_insights_helps_harder_empty_seeded(self, session):
+        h = _demo_headers(session)
+        r = session.get(f"{API}/insights", headers=h, timeout=15)
+        assert r.status_code == 200
+        body = r.json()
+        ins = body["insights"]
+        # HELPS + HARDER MUST BE EMPTY for the seeded demo user too
+        assert ins["helps"] == [], f"expected helps==[] but got {ins['helps']}"
+        assert ins["harder"] == [], f"expected harder==[] but got {ins['harder']}"
+        # daily_moods still 7
+        assert len(body["daily_moods"]) == 7
+        # notice+context should be checked; may be populated but only from mood/context
+        for group in ("notice", "context"):
+            for item in ins.get(group, []):
+                text = item["text"].lower()
+                assert not any(w in text for w in BANNED_OBS_WORDS), \
+                    f"{group} insight contains banned health word: {item}"
+
+
+class TestTodayObservationMoodBased:
+    def test_demo_today_observation_no_health_words(self, session):
+        h = _demo_headers(session)
+        t = session.get(f"{API}/today", headers=h, timeout=15).json()
+        obs = t.get("observation")
+        if obs:
+            low = obs.lower()
+            for w in BANNED_OBS_WORDS:
+                assert w not in low, f"observation contains banned health word '{w}': {obs}"
+
+    def test_new_user_no_observation_yet(self, session, auth_headers):
+        t = session.get(f"{API}/today", headers=auth_headers, timeout=15).json()
+        # a fresh user (few or no check-ins) → observation should be None
+        # (function requires >=5 check-ins)
+        # Note: fixture user has zero pre-seeded check-ins; may have created a few in earlier tests
+        obs = t.get("observation")
+        if obs is not None:
+            low = obs.lower()
+            for w in BANNED_OBS_WORDS:
+                assert w not in low
+
+
+class TestStoryNoHealthReference:
+    def test_story_template_no_sleep_and_movement(self, session):
+        h = _demo_headers(session)
+        r = session.get(f"{API}/story?period=week", headers=h, timeout=15)
+        assert r.status_code == 200
+        d = r.json()
+        assert "template" in d and isinstance(d["template"], str) and len(d["template"]) > 0
+        tmpl = d["template"].lower()
+        assert "sleep and movement" not in tmpl
+        # facts must expose empty top_helps/top_harder
+        f = d["facts"]
+        assert f["top_helps"] == [] and f["top_harder"] == []
+
+    def test_story_month_period_also_clean(self, session):
+        h = _demo_headers(session)
+        r = session.get(f"{API}/story?period=month", headers=h, timeout=15)
+        assert r.status_code == 200
+        assert "sleep and movement" not in r.json()["template"].lower()
