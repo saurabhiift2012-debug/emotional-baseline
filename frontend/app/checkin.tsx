@@ -96,9 +96,9 @@ export default function CheckIn() {
           {lowMood ? (
             <View style={{ marginTop: spacing.xl }}>
               <AppText style={[styles.sub, { textAlign: "center", marginBottom: spacing.lg }]}>{t("helpful_now")}</AppText>
+              <OptionRow icon="phone-call" label={t("book_15_call")} onPress={() => { close(); router.push("/psychologists"); }} testID="low-book-call" />
               <OptionRow icon="compass" label={t("see_affecting")} onPress={() => { close(); router.push("/(tabs)/insights"); }} testID="low-see-affecting" />
               <OptionRow icon="wind" label={t("take_step")} onPress={() => { close(); router.push("/(tabs)/support"); }} testID="low-take-step" />
-              <OptionRow icon="user-plus" label={t("connect_psych")} onPress={() => { close(); router.push("/(tabs)/support"); }} testID="low-connect" />
               <OptionRow icon="check-circle" label={t("im_okay")} onPress={close} testID="low-okay" />
             </View>
           ) : (

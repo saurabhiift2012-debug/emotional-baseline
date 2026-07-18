@@ -1,15 +1,17 @@
 import React from "react";
 import { View, Text, Pressable, StyleSheet, useWindowDimensions } from "react-native";
-import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from "react-native-reanimated";
+import Animated, { useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
+import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
-import { colors, spacing, radius, font, T } from "./ui";
-import { Mood, GROUP_TINT } from "./moods";
+import { colors, spacing, font, T } from "./ui";
+import { Mood, MOOD_COLORS } from "./moods";
 import { MoodEmoji } from "./MoodEmoji";
 import { Lang } from "./i18n";
 
 function MoodTile({ mood, selected, onPress, lang, size }: { mood: Mood; selected: boolean; onPress: () => void; lang: Lang; size: number }) {
   const scale = useSharedValue(1);
   const anim = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  const palette = MOOD_COLORS[mood.key] || { from: colors.surfaceSecondary, to: colors.surfaceSecondary, accent: colors.amber };
 
   const handle = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -30,12 +32,21 @@ function MoodTile({ mood, selected, onPress, lang, size }: { mood: Mood; selecte
       <Animated.View
         style={[
           styles.tile,
-          { width: size - 8, height: size - 8, backgroundColor: GROUP_TINT[mood.group] || colors.surfaceSecondary },
-          selected && styles.tileSelected,
+          { width: size - 8, height: (size - 8) * 1.18, shadowColor: palette.accent },
+          selected && [styles.tileSelected, { shadowOpacity: 0.55 }],
           anim,
         ]}
       >
-        <MoodEmoji mood={mood} size={size * 0.5} />
+        <LinearGradient
+          colors={[palette.from, palette.to]}
+          start={{ x: 0.2, y: 0 }}
+          end={{ x: 0.8, y: 1 }}
+          style={[styles.pill, selected && { borderColor: "rgba(255,255,255,0.9)" }]}
+        >
+          <View style={[styles.halo, { width: size * 0.64, height: size * 0.64, borderRadius: size * 0.32 }]}>
+            <MoodEmoji mood={mood} size={size * 0.46} />
+          </View>
+        </LinearGradient>
       </Animated.View>
       <Text style={[styles.label, selected && styles.labelSelected]} numberOfLines={1}>
         {lang === "hi" ? mood.hi : mood.en}
@@ -70,13 +81,27 @@ export function MoodSelector({ moods, value, onChange, lang, pad }: { moods: Moo
 const styles = StyleSheet.create({
   grid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between" },
   tile: {
-    borderRadius: radius.lg,
+    borderRadius: 22,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.28,
+    shadowRadius: 12,
+    elevation: 5,
+  },
+  pill: {
+    flex: 1,
+    borderRadius: 22,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
     borderColor: "transparent",
+    overflow: "hidden",
   },
-  tileSelected: { borderColor: colors.amber },
+  halo: {
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.22)",
+  },
+  tileSelected: {},
   label: { marginTop: spacing.sm, fontFamily: font.body, fontSize: T.base, color: colors.onSurfaceSecondary },
   labelSelected: { color: colors.onSurface, fontWeight: "600" },
 });

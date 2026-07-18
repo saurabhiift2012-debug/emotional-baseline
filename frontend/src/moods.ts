@@ -44,6 +44,20 @@ export const GROUP_COLOR: Record<string, string> = {
   bright: "#8BAF8C",
 };
 
+// Per-mood expressive palette arranged by ENERGY (not good/bad): a cohesive
+// "dusk spectrum". Each mood gets a soft gradient pill (from -> to) + accent.
+export const MOOD_COLORS: Record<string, { from: string; to: string; accent: string }> = {
+  heavy:      { from: "#6B7BB0", to: "#4E5C8C", accent: "#5C6B9E" },
+  anxious:    { from: "#8B80D0", to: "#6A5FB0", accent: "#7A6FC0" },
+  frustrated: { from: "#D9987C", to: "#BE7A5F", accent: "#CE8A6E" },
+  numb:       { from: "#9AA3B4", to: "#7C8598", accent: "#8B94A6" },
+  foggy:      { from: "#A9B7BF", to: "#8B9AA2", accent: "#9BAAB2" },
+  okay:       { from: "#E3D29A", to: "#CBB679", accent: "#D8C588" },
+  hopeful:    { from: "#9ECDA8", to: "#7EAF8A", accent: "#8FBF9A" },
+  calm:       { from: "#8FC4D1", to: "#6FA6B4", accent: "#7FB6C4" },
+  energised:  { from: "#EFC45E", to: "#D9A63C", accent: "#E6B54A" },
+};
+
 export const CONTEXT_TAGS = [
   "work", "family", "relationships", "health", "sleep",
   "money", "exercise", "social", "travel", "weather", "other",

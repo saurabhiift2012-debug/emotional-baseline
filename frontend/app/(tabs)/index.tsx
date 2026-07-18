@@ -17,6 +17,9 @@ export default function Today() {
   const [loading, setLoading] = useState(true);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [justSaved, setJustSaved] = useState(false);
+  const [lowPrompt, setLowPrompt] = useState(false);
+
+  const LOW_MOODS = ["heavy", "anxious", "frustrated"];
 
   const load = useCallback(async () => {
     try {
@@ -35,8 +38,14 @@ export default function Today() {
     try {
       await api.post("/checkins", { mood, context: [], note: null, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC" });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      setJustSaved(true);
-      setTimeout(() => setJustSaved(false), 2200);
+      if (LOW_MOODS.includes(mood)) {
+        setLowPrompt(true);
+        setJustSaved(false);
+      } else {
+        setLowPrompt(false);
+        setJustSaved(true);
+        setTimeout(() => setJustSaved(false), 2200);
+      }
       await load();
     } catch {}
   };
@@ -72,6 +81,21 @@ export default function Today() {
             <View style={styles.savedPill} testID="quicklog-saved">
               <Feather name="check" size={14} color={colors.onSurface} />
               <AppText style={styles.savedPillText}>{t("thanks_checkin")}</AppText>
+            </View>
+          ) : null}
+          {lowPrompt ? (
+            <View style={styles.lowPrompt} testID="low-mood-prompt">
+              <AppText style={styles.lowPromptThanks}>{t("thanks_checkin")}</AppText>
+              <AppText style={styles.lowPromptText}>{t("talk_title")}</AppText>
+              <View style={styles.lowPromptRow}>
+                <Pressable testID="low-prompt-book" onPress={() => { setLowPrompt(false); router.push("/psychologists"); }} style={styles.lowPromptBook}>
+                  <Feather name="phone-call" size={15} color={colors.onSurfaceInverse} />
+                  <AppText style={styles.lowPromptBookText}>{t("book_15_call")}</AppText>
+                </Pressable>
+                <Pressable testID="low-prompt-dismiss" onPress={() => setLowPrompt(false)} style={styles.lowPromptDismiss}>
+                  <AppText style={styles.lowPromptDismissText}>{t("im_okay")}</AppText>
+                </Pressable>
+              </View>
             </View>
           ) : null}
           <View style={{ height: spacing.md }} />
@@ -197,6 +221,14 @@ const styles = StyleSheet.create({
   heroHint: { color: colors.onSurfaceSecondary, fontSize: T.base, marginTop: 4 },
   savedPill: { flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start", backgroundColor: "#E7EEE3", borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: 6, marginTop: spacing.sm },
   savedPillText: { color: colors.onSurface, fontSize: T.sm, fontWeight: "600" },
+  lowPrompt: { backgroundColor: "#EDE7F0", borderRadius: radius.md, padding: spacing.lg, marginTop: spacing.md },
+  lowPromptThanks: { color: colors.onSurfaceSecondary, fontSize: T.sm, marginBottom: 2 },
+  lowPromptText: { color: colors.onSurface, fontSize: T.lg, fontWeight: "500", marginBottom: spacing.md },
+  lowPromptRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  lowPromptBook: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: colors.indigo, borderRadius: radius.pill, paddingHorizontal: spacing.lg, height: 44 },
+  lowPromptBookText: { color: colors.onSurfaceInverse, fontWeight: "600", fontSize: T.base },
+  lowPromptDismiss: { height: 44, paddingHorizontal: spacing.md, alignItems: "center", justifyContent: "center" },
+  lowPromptDismissText: { color: colors.onSurfaceSecondary, fontWeight: "500" },
   addDetail: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, marginTop: spacing.sm, height: 44 },
   addDetailText: { color: colors.indigo, fontWeight: "600", fontSize: T.base },
   entriesHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: spacing.md },
