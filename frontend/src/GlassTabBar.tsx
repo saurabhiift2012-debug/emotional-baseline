@@ -32,13 +32,13 @@ export function GlassTabBar({ state, navigation }: BottomTabBarProps) {
   return (
     <View style={[styles.wrap, { paddingBottom: insets.bottom + 10 }]} testID="glass-tabbar">
       <BlurView
-        intensity={scheme === "dark" ? 40 : 60}
-        tint={scheme === "dark" ? "dark" : "light"}
+        intensity={Platform.OS === "ios" ? 100 : scheme === "dark" ? 40 : 60}
+        tint={Platform.OS === "ios" ? "systemChromeMaterial" : scheme === "dark" ? "dark" : "light"}
         experimentalBlurMethod={Platform.OS === "android" ? "dimezisBlurView" : undefined}
         style={StyleSheet.absoluteFill}
       />
-      {/* translucent wash for legibility + a hairline top border */}
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.surface, opacity: scheme === "dark" ? 0.55 : 0.62 }]} />
+      {/* light legibility wash — iOS system material already handles most of it */}
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.surface, opacity: Platform.OS === "ios" ? 0.12 : scheme === "dark" ? 0.55 : 0.62 }]} />
       <View style={[styles.hairline, { backgroundColor: colors.border }]} />
 
       <View style={styles.row}>
