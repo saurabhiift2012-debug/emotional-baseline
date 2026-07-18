@@ -75,7 +75,7 @@ export default function PsychologistDetail() {
             <Row icon="credit-card" text={`₹${confirmed.price} · ${t("paid_via")}`} />
           </Card>
           <View style={{ height: spacing.lg }} />
-          <PrimaryButton testID="view-appointments-button" label={t("view_appointments")} onPress={() => { router.back(); router.push("/appointments"); }} />
+          <PrimaryButton testID="view-appointments-button" label={t("view_appointments")} onPress={() => { if (router.canGoBack()) router.back(); requestAnimationFrame(() => setTimeout(() => router.push("/appointments"), 300)); }} />
           <Pressable testID="confirm-close" onPress={() => router.back()} style={styles.closeBtn}><AppText style={styles.closeText}>{t("done")}</AppText></Pressable>
         </ScrollView>
       </Screen>

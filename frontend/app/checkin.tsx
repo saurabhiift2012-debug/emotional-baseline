@@ -44,7 +44,18 @@ export default function CheckIn() {
     }
   };
 
-  const close = () => router.back();
+  const close = () => {
+    if (router.canGoBack()) router.back();
+    else router.replace("/(tabs)");
+  };
+
+  // Closing a modal and immediately pushing a new route races on Android and
+  // can leave the app stuck on the "done" screen. Dismiss first, then navigate
+  // on the next frame so the modal has fully unmounted.
+  const closeThen = (route: string) => {
+    close();
+    requestAnimationFrame(() => setTimeout(() => router.push(route as any), 350));
+  };
 
   return (
     <Screen>
@@ -100,9 +111,9 @@ export default function CheckIn() {
           {lowMood ? (
             <View style={{ marginTop: spacing.xl }}>
               <AppText style={[styles.sub, { textAlign: "center", marginBottom: spacing.lg }]}>{t("helpful_now")}</AppText>
-              <OptionRow icon="phone-call" label={t("book_15_call")} onPress={() => { close(); router.push("/psychologists"); }} testID="low-book-call" />
-              <OptionRow icon="compass" label={t("see_affecting")} onPress={() => { close(); router.push("/(tabs)/insights"); }} testID="low-see-affecting" />
-              <OptionRow icon="wind" label={t("take_step")} onPress={() => { close(); router.push("/(tabs)/support"); }} testID="low-take-step" />
+              <OptionRow icon="phone-call" label={t("book_15_call")} onPress={() => closeThen("/psychologists")} testID="low-book-call" />
+              <OptionRow icon="compass" label={t("see_affecting")} onPress={() => closeThen("/(tabs)/insights")} testID="low-see-affecting" />
+              <OptionRow icon="wind" label={t("take_step")} onPress={() => closeThen("/(tabs)/support")} testID="low-take-step" />
               <OptionRow icon="check-circle" label={t("im_okay")} onPress={close} testID="low-okay" />
             </View>
           ) : (
