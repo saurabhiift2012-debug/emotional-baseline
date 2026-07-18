@@ -173,7 +173,7 @@ function buildExportHtml(data: any, moods: any[], lang: "en" | "hi") {
 
 
 const makeStyles = (colors: any) => StyleSheet.create({
-  wrap: { paddingHorizontal: spacing.xl, paddingTop: spacing.md },
+  wrap: { paddingHorizontal: spacing.xl, paddingTop: spacing.md, paddingBottom: 100 },
   h: { fontSize: 28 },
   email: { color: colors.onSurfaceSecondary, marginTop: 2 },
   privacyHead: { flexDirection: "row", alignItems: "center" },

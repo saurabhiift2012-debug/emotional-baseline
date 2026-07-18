@@ -105,7 +105,7 @@ function BarChart({ series, max, color }: { series?: any[]; max: number; color: 
 }
 
 const makeStyles = (colors: any) => StyleSheet.create({
-  wrap: { paddingHorizontal: spacing.xl, paddingTop: spacing.md },
+  wrap: { paddingHorizontal: spacing.xl, paddingTop: spacing.md, paddingBottom: 100 },
   h: { fontSize: 28 },
   section: { marginTop: spacing.xl, fontSize: T.xl },
   pulseGrid: { flexDirection: "row", flexWrap: "wrap" },

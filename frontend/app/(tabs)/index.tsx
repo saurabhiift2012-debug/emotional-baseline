@@ -59,6 +59,7 @@ export default function Today() {
 
   const greetKey = data?.greeting === "morning" ? "good_morning" : data?.greeting === "afternoon" ? "good_afternoon" : "good_evening";
   const step = data?.small_step;
+  const noticeText = data?.day_notice?.text || data?.observation;
 
   const sendFeedback = async (resp: string) => {
     setFeedback(resp);
@@ -178,13 +179,13 @@ export default function Today() {
         )}
 
         {/* Observation */}
-        {data?.observation ? (
-          <Card style={{ marginTop: spacing.lg }}>
+        {noticeText ? (
+          <Card style={{ marginTop: spacing.lg }} testID="notice-card">
             <View style={styles.obsHead}>
               <Feather name="feather" size={16} color={colors.indigo} />
               <AppText style={styles.obsHeadText}>{t("notice_title")}</AppText>
             </View>
-            <Display style={styles.obsText}>{data.observation}</Display>
+            <Display style={styles.obsText}>{noticeText}</Display>
             <AppText style={styles.feelQ}>{t("feel_true")}</AppText>
             <View style={styles.feelRow}>
               {(["yes", "maybe", "not_really"] as const).map((k) => (
@@ -231,7 +232,7 @@ function fmtTime(iso?: string) {
 }
 
 const makeStyles = (colors: any) => StyleSheet.create({
-  wrap: { paddingHorizontal: spacing.xl, paddingTop: spacing.md },
+  wrap: { paddingHorizontal: spacing.xl, paddingTop: spacing.md, paddingBottom: 100 },
   topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: spacing.md },
   talkNow: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: colors.tintRose, borderRadius: radius.pill, paddingHorizontal: spacing.md, height: 38 },
   talkNowText: { color: colors.rose, fontWeight: "700", fontSize: T.sm },

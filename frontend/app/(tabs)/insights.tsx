@@ -122,7 +122,7 @@ function fbLabel(k: string, t: (s: string) => string) {
 }
 
 const makeStyles = (colors: any) => StyleSheet.create({
-  wrap: { paddingHorizontal: spacing.xl, paddingTop: spacing.md },
+  wrap: { paddingHorizontal: spacing.xl, paddingTop: spacing.md, paddingBottom: 100 },
   eyebrow: { color: colors.onSurfaceSecondary, fontSize: T.sm, textTransform: "uppercase", letterSpacing: 1 },
   qRow: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: spacing.md },
   q: { fontSize: 26, lineHeight: 34, marginTop: 4, flex: 1 },

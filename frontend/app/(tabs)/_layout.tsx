@@ -1,59 +1,12 @@
 import React from "react";
 import { Tabs } from "expo-router";
-import { Feather } from "@expo/vector-icons";
-import { View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useApp } from "@/src/AppContext";
-import { useTheme } from "@/src/ThemeContext";
-import { font } from "@/src/theme";
-
-const ICONS: Record<string, any> = {
-  index: "sun",
-  insights: "compass",
-  progress: "trending-up",
-  support: "heart",
-  me: "user",
-};
+import { GlassTabBar } from "@/src/GlassTabBar";
 
 export default function TabsLayout() {
-  const { t } = useApp();
-  const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
-  const labels: Record<string, string> = {
-    index: t("tab_today"),
-    insights: t("tab_insights"),
-    progress: t("tab_progress"),
-    support: t("tab_support"),
-    me: t("tab_me"),
-  };
   return (
     <Tabs
-      screenOptions={({ route }) => ({
-        headerShown: false,
-        animation: "shift",
-        tabBarActiveTintColor: colors.indigo,
-        tabBarInactiveTintColor: colors.onSurfaceSecondary,
-        // Sit the tab bar ABOVE the Android system navigation bar / iOS home
-        // indicator by adding the bottom safe-area inset (edge-to-edge safe).
-        tabBarStyle: {
-          backgroundColor: colors.surface,
-          borderTopColor: colors.border,
-          borderTopWidth: 1,
-          height: 64 + insets.bottom,
-          paddingTop: 8,
-          paddingBottom: insets.bottom + 8,
-        },
-        tabBarLabelStyle: { fontFamily: font.body, fontSize: 11, fontWeight: "500" },
-        tabBarLabel: labels[route.name] ?? route.name,
-        tabBarIcon: ({ color, focused }) => (
-          <View style={{
-            paddingHorizontal: 16, paddingVertical: 4, borderRadius: 999,
-            backgroundColor: focused ? colors.tintLav : "transparent",
-          }}>
-            <Feather name={ICONS[route.name] || "circle"} size={20} color={color} />
-          </View>
-        ),
-      })}
+      tabBar={(props) => <GlassTabBar {...props} />}
+      screenOptions={{ headerShown: false, animation: "shift" }}
     >
       <Tabs.Screen name="index" />
       <Tabs.Screen name="insights" />

@@ -1,0 +1,44 @@
+{
+  "summary": "Iteration 10 (Glass tab-bar bug fix + day_notice mood-of-the-day) PASSED end-to-end. Backend: 7/7 pytest tests green in /app/backend/tests/test_iteration10_tabbar_daynotice.py — (a) demo login /api/auth/request-otp returns dev_code=123456 and /api/auth/verify-otp returns {token,user}; (b) GET /api/today response body contains a 'day_notice' key; (c) after posting a 'calm' check-in the response has day_notice as a dict with tone in {mixed,low,neutral,bright} and non-empty text; (d) after adding a second 'heavy' check-in, day_notice.tone flips to 'mixed' (bright + low in same day), confirming assess_day() reflects the day's mood mix; (e) /api/insights still returns integer 'streak' (regression, observed value present). Frontend (Playwright, mobile viewport 390x844, real preview URL, real demo login): (1) Glass tab-bar (testID glass-tabbar) is rendered as an absolute floating BlurView at bottom (top=774, height=70, bottom=844 in a 844-tall viewport). (2) All five tab items — tab-index, tab-insights, tab-progress, tab-support, tab-me — are present, each 78px wide × 52px tall, laid out edge-to-edge across the 390px viewport. (3) Each tab renders a VISIBLE Feather icon (sun/compass/trending-up/heart/user) AND a label (Today/Insights/Progress/Support/Me) — confirmed by direct screenshots of Today, Insights, Progress, Support, and Me screens. (4) The ACTIVE tab shows a coloured lavender (tintLav) pill behind its icon and a bolder label — visible on every per-tab screenshot. (5) Tapping each tab navigates to the corresponding screen (index → Today hero, insights → 'What seems to affect how I feel?', progress → 'Your Wellbeing Pulse', support → Support, me → 'Demo +919999900000' profile). (6) 'Something you may want to notice' card (testID notice-card) renders the day_notice.text — captured live text: 'Your day moved between heavier and lighter moments. Emotional ups and downs within a single day are completely human — noticing them is a real strength.' — this is the 'mixed' tone as expected after logging both a bright and a low mood via the tests above. (7) Regressions: 'Need to talk now?' pill (need-talk-now) opens the crisis sheet and crisis-dismiss closes it; Insights streak-pill reads '🔥 29 day streak'. (8) Bottom-of-screen content clipping check — for Today, Insights, Progress, Support and Me the ScrollView was scrolled to its max and screenshotted; on Progress the 'Read your story' button is fully visible above the tab bar; on Me the 'Log out' button + 'TherapiShots is a self-reflection tool…' footer are fully visible; no content is clipped behind the floating glass tab bar (paddingBottom:100 in each screen's ScrollView is sufficient). Cosmetic-only console warnings observed: 'shadow* style props are deprecated. Use \"boxShadow\"' (react-native-web) and 'props.pointerEvents is deprecated. Use style.pointerEvents' — both carried over from prior iterations and non-blocking on native.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": [
+      {"component": "shadow* style props (react-native-web)", "issue": "Console warning: '\"shadow*\" style props are deprecated. Use \"boxShadow\".' Cosmetic on web preview, non-blocking on native. Reference: any View using shadowColor/shadowOffset/shadowOpacity/shadowRadius (e.g. /app/frontend/src/MoodSelector.tsx)."},
+      {"component": "props.pointerEvents (react-native-web)", "issue": "Console warning: 'props.pointerEvents is deprecated. Use style.pointerEvents'. Cosmetic on web preview. Likely emitted by a wrapper such as a KeyboardAvoidingView/Modal in the login/OTP flow."}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration10_tabbar_daynotice.py",
+    "/app/test_reports/pytest/pytest_iter10.xml",
+    "/app/test_reports/iteration_10.json"
+  ],
+  "action_items": [
+    "None blocking — the tab-icon bug is fixed and day_notice is wired correctly end-to-end.",
+    "Optional cleanup (carried from iter 8/9): migrate shadow* style props to boxShadow and props.pointerEvents to style.pointerEvents to silence the RN-Web deprecation warnings."
+  ],
+  "critical_code_review_comments": [
+    "/app/frontend/src/GlassTabBar.tsx (lines 11-17, 44-73): ICONS map is a straight route.name → Feather-name lookup; each Pressable renders BOTH the <Feather /> icon (line 66) and the <AppText /> label (lines 68-70). Because they are direct children of the Pressable (not conditional on any nav prop), an icon + label are guaranteed to appear for every tab — this is the correct fix for the earlier 'missing icons' bug caused by wrapping tabBarIcon inside a Tabs screenOptions View + animation:'shift'. Active state is expressed both via the tintLav iconPill background and the colors.indigo icon+label colour + fontWeight:700.",
+    "/app/frontend/src/GlassTabBar.tsx (lines 32-42): container is position:'absolute' bottom:0 with BlurView + a semi-opaque colors.surface overlay. This is why each tab screen's ScrollView contentContainerStyle uses paddingBottom:100 to avoid clipping — verified in /app/frontend/app/(tabs)/index.tsx line 235 ('paddingBottom: 100').",
+    "/app/frontend/app/(tabs)/_layout.tsx (lines 6-16): uses the custom tabBar prop and lists all five screens explicitly. screenOptions animation:'shift' is retained but no longer collides with icons because Feather is rendered by the custom bar itself.",
+    "/app/backend/server.py assess_day (lines 515-560): deterministic branching over today's mood groups (low/neutral/bright) with an extra look-back at the last 4 days for the repeated-low escalation; returns None when there are no entries so the frontend gracefully hides the notice card. No user-facing labels/diagnoses — copy is supportive and non-clinical.",
+    "/app/backend/server.py /api/today (line 971): day_notice is gated by the same 'personal_insights' consent as the older observation; response also keeps 'observation' for backward compatibility (frontend prefers day_notice.text and falls back to observation on line 62 of index.tsx).",
+    "/app/frontend/app/(tabs)/index.tsx (lines 62, 182-198): noticeText = data?.day_notice?.text || data?.observation — correct precedence; notice-card only renders when noticeText truthy."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration10_tabbar_daynotice.py (new)",
+    "/app/test_reports/iteration_10.json (new)",
+    "/app/test_reports/pytest/pytest_iter10.xml (new)"
+  ],
+  "success_rate": {
+    "backend": "100% (7/7 pytest tests passed)",
+    "frontend": "100% of tested flows (glass-tabbar icons+labels for all 5 tabs, tab navigation, active pill highlight, no bottom-content clipping on any tab, notice-card day_notice text, need-talk-now/crisis-dismiss, streak-pill)"
+  },
+  "seed_data_creation": "None new; demo phone +919999900000 is seeded idempotently by backend startup. Two check-ins ('calm' then 'heavy') were POSTed by the pytest suite during the day_notice tests — this is expected test data on the demo account.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Login path unchanged: welcome → 'I already have an account' → phone '9999900000' → Send code → OTP '123456' → Verify. Glass tab bar testIDs to assert on: glass-tabbar (container), tab-index, tab-insights, tab-progress, tab-support, tab-me — each renders a Feather icon + label; the active tab has a lavender pill behind the icon. day_notice is derived server-side from the *types* of moods logged today (see assess_day in server.py 515-560); to reproduce a 'mixed' tone in one shot, POST /api/checkins with mood='calm' then mood='heavy' as the demo user. If day_notice is null, the notice-card is hidden; the fallback text is data.observation.",
+  "rca_of_issue": "N/A — the tab-icon bug is fixed. Root cause (per E1's note) was that the previous tabBarIcon was wrapped in a View inside Tabs screenOptions with animation:'shift', which caused the icon slot to collapse on-device. The fix replaces the entire tab bar with a custom BlurView + Pressable row that renders Feather icons and labels unconditionally, which the tests confirmed end-to-end."
+}

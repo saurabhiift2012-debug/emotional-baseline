@@ -512,6 +512,54 @@ def today_observation(checkins, health_by_date):
     return None
 
 
+def assess_day(todays_entries, checkins):
+    """'Something you may want to notice' derived from the TYPES of moods logged
+    today, with a light look across recent days. Deterministic, supportive, and
+    explicitly non-diagnostic — it reflects patterns, it does not label the user.
+
+    Logic:
+      - low+bright in the same day  -> emotional variability (normalise ups/downs)
+      - >=2 low today               -> repeated low; escalate if low across recent days
+      - single low                  -> gentle acknowledgement
+      - only neutral/foggy          -> flat/foggy; suggest routine, rest, daylight
+      - all bright                  -> reinforce what's working
+      - bright+neutral (no low)      -> steady day
+    """
+    if not todays_entries:
+        return None
+    groups = [e.get('group') for e in todays_entries]
+    n = len(groups)
+    low, neutral, bright = groups.count('low'), groups.count('neutral'), groups.count('bright')
+    distinct = set(g for g in groups if g)
+
+    ordered = sorted(checkins, key=lambda c: c['date'])
+    recent_low_days = sum(1 for c in ordered[-4:] if c.get('group') == 'low')
+
+    if 'low' in distinct and 'bright' in distinct:
+        return {"tone": "mixed",
+                "text": "Your day moved between heavier and lighter moments. Emotional ups and downs within a single day are completely human — noticing them is a real strength."}
+    if low >= 2:
+        text = "You've checked in feeling low a few times today."
+        if recent_low_days >= 2:
+            text += " It's shown up across recent days too — you don't have to carry this alone. A short talk with someone might help."
+        else:
+            text += " That can be draining. Be gentle with yourself, and reach out if it lingers."
+        return {"tone": "low", "text": text}
+    if low == 1 and n == 1:
+        return {"tone": "low",
+                "text": "Today landed on the heavier side. Whatever brought you here, thank you for noticing it."}
+    if neutral >= 1 and low == 0 and bright == 0:
+        return {"tone": "neutral",
+                "text": "A flat or foggy stretch today. Gentle routine, rest, and a little daylight can help the edges feel sharper."}
+    if bright == n and n >= 1:
+        return {"tone": "bright",
+                "text": "Today has felt steadily brighter. It's worth pausing to notice what's working — that's useful data too."}
+    if 'bright' in distinct and 'neutral' in distinct and 'low' not in distinct:
+        return {"tone": "bright",
+                "text": "A mostly steady day with some lighter moments. The small good things are worth logging."}
+    return None
+
+
 # ----------------------------------------------------------------------------
 # Routes: auth
 # ----------------------------------------------------------------------------
@@ -920,6 +968,7 @@ async def today(user: dict = Depends(get_current_user)):
     latest_mood_key = latest['mood'] if latest else (checkins[-1]['mood'] if checkins else None)
     LOW_KEYS = {"heavy", "anxious", "frustrated"}
     call_recommended = bool(lmj.get('repeated_low') or (latest_mood_key in LOW_KEYS))
+    day_notice = assess_day(todays_entries, checkins) if user.get('consents', {}).get('personal_insights', True) else None
     return {
         "greeting": greeting,
         "name": user.get('name', 'there'),
@@ -929,6 +978,7 @@ async def today(user: dict = Depends(get_current_user)):
         "todays_count": len(raw_today),
         "signals": signals,
         "observation": observation,
+        "day_notice": day_notice,
         "small_step": pick_small_step(last_value),
         "low_mood_journey": lmj,
         "call_recommended": call_recommended,
