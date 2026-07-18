@@ -36,16 +36,9 @@ export default function Progress() {
         {/* Wellbeing Pulse */}
         <SectionTitle style={styles.section}>{t("pulse_title")}</SectionTitle>
         <Card>
-          <View style={styles.pulseGrid}>
-            {(["mood", "sleep", "activity", "recovery"] as const).map((k) => (
-              <View key={k} style={styles.pulseItem} testID={`pulse-${k}`}>
-                <AppText style={styles.pulseLabel}>{t(`pulse_${k}`)}</AppText>
-                <View style={styles.pulseStatusRow}>
-                  <Feather name={STATUS_ICON[pulse?.[k]] || "minus"} size={14} color={colors.indigo} />
-                  <AppText style={styles.pulseStatus}>{t(STATUS_KEY[pulse?.[k]] || "status_mixed")}</AppText>
-                </View>
-              </View>
-            ))}
+          <View style={styles.pulseMoodRow} testID="pulse-mood">
+            <Feather name={STATUS_ICON[pulse?.mood] || "minus"} size={16} color={colors.indigo} />
+            <AppText style={styles.pulseMoodText}>{t("pulse_mood")}: {t(STATUS_KEY[pulse?.mood] || "status_mixed")}</AppText>
           </View>
           <AppText style={styles.pulseSummary}>{pulse?.summary}</AppText>
           <AppText style={styles.disclaimer}>{pulse?.disclaimer}</AppText>
@@ -70,14 +63,6 @@ export default function Progress() {
         {/* Mood trend */}
         <SectionTitle style={styles.section}>{t("mood_trend")}</SectionTitle>
         <BarChart series={prog?.mood_series} max={6} color={colors.indigo} />
-
-        {/* Sleep trend */}
-        <SectionTitle style={styles.section}>{t("sleep_trend")}</SectionTitle>
-        <BarChart series={prog?.sleep_series} max={600} color={colors.sage} />
-
-        {/* Activity trend */}
-        <SectionTitle style={styles.section}>{t("activity_trend")}</SectionTitle>
-        <BarChart series={prog?.activity_series} max={70} color={colors.amber} />
 
         {/* Story CTA */}
         <Pressable testID="read-story-button" onPress={() => router.push("/story")} style={styles.storyBtn}>
@@ -112,6 +97,8 @@ const styles = StyleSheet.create({
   h: { fontSize: 28 },
   section: { marginTop: spacing.xl, fontSize: T.xl },
   pulseGrid: { flexDirection: "row", flexWrap: "wrap" },
+  pulseMoodRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm, marginBottom: spacing.sm },
+  pulseMoodText: { fontSize: T.lg, color: colors.onSurface, fontWeight: "500" },
   pulseItem: { width: "50%", marginBottom: spacing.lg },
   pulseLabel: { color: colors.onSurfaceSecondary, fontSize: T.sm },
   pulseStatusRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4 },

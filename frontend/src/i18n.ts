@@ -164,6 +164,13 @@ export const STR: Dict = {
 
   not_medical: { en: "TherapiShots is a self-reflection tool. It does not diagnose or provide medical advice.", hi: "TherapiShots एक आत्म-चिंतन उपकरण है। यह निदान या चिकित्सा सलाह नहीं देता।" },
 
+  // talk to someone / 15-min call
+  talk_title: { en: "Would talking to someone help?", hi: "क्या किसी से बात करना मदद करेगा?" },
+  talk_body: { en: "A 15-minute call with a psychologist can help you talk things through.", hi: "किसी मनोवैज्ञानिक के साथ 15-मिनट की कॉल बात को समझने में मदद कर सकती है।" },
+  book_15_call: { en: "Book a 15-min call", hi: "15-मिनट की कॉल बुक करें" },
+  min_call: { en: "15-min Call", hi: "15-मिनट कॉल" },
+  recommended_for_you: { en: "Suggested for you", hi: "आपके लिए सुझाव" },
+
   // multiple check-ins / today entries
   add_detail: { en: "Add a note or context", hi: "टिप्पणी या संदर्भ जोड़ें" },
   todays_checkins_title: { en: "Today's check-ins", hi: "आज के चेक-इन" },

@@ -1,0 +1,33 @@
+{
+  "summary": "TherapiShots reposition (mood-only UI + paid 15-min call) E2E PASSED. Backend: 37/37 pytest — added 3 new suites: TestTodayCallRecommendation (flags present on demo user; call_recommended=true when latest mood is heavy/anxious/frustrated; latest_group==='low'/'bright' matches latest entry), TestPsychologists.test_profiles_include_15min_call_and_short_price (every psychologist has '15-min Call' in session_types AND short_call_price < price), TestBookings.test_15min_call_charges_short_call_price (booking price==short_call_price, payment.provider=='mock'), TestBookings.test_video_session_charges_full_price (booking price==full p['price']). Regressions kept green: OTP request/verify (register+login), demo phone +919999900000, check-ins (multiple/day, unknown mood 400), /today, /insights.daily_moods(7), /pulse, /progress, psychologists CRUD+detail, cancel booking, auth enforcement across 6 protected endpoints. Frontend (Expo web mobile 390x844) logged in as +919999900000: (1) Today shows mood hero + today's entries + repeated-low banner + 'Suggested for you — Would talking to someone help? · Book a 15-min call' talk-card and NO sleep/steps/HR dashboard; (2) Book-a-call → /psychologists → tap Dr. Ananya Rao → session chip renders '15-min Call · ₹400', slot selected, Confirm & pay button renders '₹400', confirmation screen shows 'Dr. Ananya Rao · Sun 19 Jul · 10:00 · 15-min Call · ₹400 · Paid (mock)'; (3) Progress screen shows only Wellbeing Pulse (summary + Mood status), month count, Feel Map, Mood trend, Read your story CTA — NO sleep/steps/activity bar charts; (4) Insights renders 7-day mood strip (Su..Sa) + Consistent Pattern confidence cards; (5) My appointments lists the new booking with 'Cancel booking'. No blocking issues.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": [
+      {"component": "pointerEvents prop (from prior run)", "issue": "Non-blocking Expo web deprecation warning about props.pointerEvents. No functional impact; still present but not from tested user code paths."}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_therapishots_api.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py /api/today: call_recommended = repeated_low OR latest_mood_key in {heavy,anxious,frustrated}. Correct per spec. Also exposes latest_group for the UI. signals still returned in payload (harmless — UI just doesn't render it).",
+    "server.py /api/bookings: price selection guarded — session_type=='15-min Call' picks p['short_call_price'] with fallback to p['price'] if missing (defensive), else p['price']. session_type validated against p['session_types'] (400 otherwise). Payment stub clearly labelled provider=mock with MOCK- transaction id.",
+    "seed_psychologists() upserts by slug so short_call_price / '15-min Call' propagate on restart. Good — existing DBs get the new fields automatically.",
+    "server.py /api/progress still returns sleep_series/steps_series/activity_series arrays; the UI no longer renders these — dead payload weight. Optional cleanup: drop these from the response or hide behind a query param.",
+    "frontend psychologist/[id].tsx priceFor: uses (p?.short_call_price ?? p?.price) for '15-min Call' — matches backend logic exactly. Chip text and Confirm & pay button both read from priceFor() so the two prices stay in sync."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_therapishots_api.py (added TestTodayCallRecommendation with 3 tests; added test_profiles_include_15min_call_and_short_price; added test_15min_call_charges_short_call_price and test_video_session_charges_full_price)"
+  ],
+  "success_rate": {"backend": "100% (37/37)", "frontend": "100% of tested flows (login OTP, Today talk-card, 15-min call booking with ₹400 mock payment, confirmation, Progress, Insights, Appointments)"},
+  "seed_data_creation": "Backend seeds demo phone +919999900000 with ~42 days of correlated mood+health on startup. Test run created 3 fresh phone users (register OTP flow) + 3 new bookings for Dr. Ananya Rao (one 15-min Call + one Video + one cancel test). Safe to leave; harmless demo data.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Env: EXPO_PUBLIC_BACKEND_URL is the public URL; export before running pytest. Demo phone +919999900000 (login mode) — request-otp returns dev_code inline (mock=true). New reposition surface: (a) /api/today.call_recommended (bool) & latest_group ('low'|'neutral'|'bright') drive Today's talk-card; (b) each psychologist profile has '15-min Call' in session_types + short_call_price (400/500/300/250 INR for the 4 seeded slugs); (c) bookings with session_type='15-min Call' charge short_call_price, all other types charge price. Frontend testIDs of interest: today-mood-hero, talk-card, book-call-button, session-type-15-min Call (note the space), slot-<id>, confirm-pay-button, view-appointments-button, cancel-booking-button (on appointments), login-phone-input, login-send-otp-button, dev-code-box, otp-input, verify-otp-button. Tab bar buttons in (tabs)/_layout.tsx don't have testIDs — use role='tab' with name regex to click them from Playwright.",
+  "rca_of_issue": "N/A — no blocking issues found."
+}

@@ -861,6 +861,13 @@ async def today(user: dict = Depends(get_current_user)):
         "context": c.get('context', []), "note": c.get('note'),
     } for c in raw_today]
     latest = raw_today[-1] if raw_today else None
+    # 15-min paid call is recommended for users showing repeated lower mood OR
+    # whose latest mood is in the low group (heavy / anxious / frustrated).
+    lmj = detect_low_mood(checkins)
+    latest_group = latest.get('group') if latest else (checkins[-1].get('group') if checkins else None)
+    latest_mood_key = latest['mood'] if latest else (checkins[-1]['mood'] if checkins else None)
+    LOW_KEYS = {"heavy", "anxious", "frustrated"}
+    call_recommended = bool(lmj.get('repeated_low') or (latest_mood_key in LOW_KEYS))
     return {
         "greeting": greeting,
         "name": user.get('name', 'there'),
@@ -871,7 +878,9 @@ async def today(user: dict = Depends(get_current_user)):
         "signals": signals,
         "observation": observation,
         "small_step": pick_small_step(last_value),
-        "low_mood_journey": detect_low_mood(checkins),
+        "low_mood_journey": lmj,
+        "call_recommended": call_recommended,
+        "latest_group": latest_group,
     }
 
 
@@ -1028,34 +1037,36 @@ DEMO_PSYCHOLOGISTS = [
     {"slug": "ananya-rao", "name": "Dr. Ananya Rao", "verified": True,
      "qualifications": "PhD Clinical Psychology", "specializations": ["Anxiety", "Stress", "Sleep"],
      "languages": ["English", "Hindi"], "experience_years": 11,
-     "session_types": ["Video", "Chat"], "price": 1200, "currency": "INR",
+     "session_types": ["15-min Call", "Video", "Chat"], "price": 1200, "short_call_price": 400, "currency": "INR",
      "bio": "Warm, evidence-based support for anxiety, stress and sleep difficulties."},
     {"slug": "vikram-menon", "name": "Dr. Vikram Menon", "verified": True,
      "qualifications": "MPhil Clinical Psychology", "specializations": ["Relationships", "Work stress", "Low mood"],
      "languages": ["English"], "experience_years": 8,
-     "session_types": ["Video"], "price": 1500, "currency": "INR",
+     "session_types": ["15-min Call", "Video"], "price": 1500, "short_call_price": 500, "currency": "INR",
      "bio": "Helps people navigate relationships, burnout and work-related stress."},
     {"slug": "sara-iyer", "name": "Ms. Sara Iyer", "verified": True,
      "qualifications": "MA Counselling Psychology", "specializations": ["Self-esteem", "Anxiety", "Life transitions"],
      "languages": ["English", "Hindi"], "experience_years": 6,
-     "session_types": ["Video", "Chat"], "price": 900, "currency": "INR",
+     "session_types": ["15-min Call", "Video", "Chat"], "price": 900, "short_call_price": 300, "currency": "INR",
      "bio": "A gentle, collaborative approach for self-esteem and life changes."},
     {"slug": "rohit-kulkarni", "name": "Dr. Rohit Kulkarni", "verified": False,
      "qualifications": "PsyD", "specializations": ["Sleep", "Mindfulness", "Stress"],
      "languages": ["English", "Hindi", "Marathi"], "experience_years": 4,
-     "session_types": ["Chat"], "price": 700, "currency": "INR",
+     "session_types": ["15-min Call", "Chat"], "price": 700, "short_call_price": 250, "currency": "INR",
      "bio": "Focuses on mindfulness and sleep hygiene for everyday stress."},
 ]
 
 
 async def seed_psychologists():
-    count = await db.psychologists.count_documents({})
-    if count > 0:
-        return
-    docs = []
+    # Upsert by slug so profile changes (e.g. new 15-min Call option) always apply.
     for p in DEMO_PSYCHOLOGISTS:
-        docs.append({**p, "is_demo": True, "created_at": datetime.now(timezone.utc).isoformat()})
-    await db.psychologists.insert_many(docs)
+        await db.psychologists.update_one(
+            {"slug": p["slug"]},
+            {"$set": {**p, "is_demo": True},
+             "$setOnInsert": {"created_at": datetime.now(timezone.utc).isoformat()}},
+            upsert=True,
+        )
+    return
 
 
 def gen_availability(slug: str):
@@ -1128,10 +1139,11 @@ async def create_booking(body: BookingIn, user: dict = Depends(get_current_user)
         raise HTTPException(status_code=400, detail="That slot is no longer available")
     if body.session_type not in p.get("session_types", []):
         raise HTTPException(status_code=400, detail="Unsupported session type")
+    price = p.get("short_call_price", p["price"]) if body.session_type == "15-min Call" else p["price"]
     # ---- MOCK PAYMENT (server-side confirmation stub) ----
     payment = {
         "status": "paid", "provider": "mock",
-        "amount": p["price"], "currency": p.get("currency", "INR"),
+        "amount": price, "currency": p.get("currency", "INR"),
         "transaction_id": f"MOCK-{uuid_hex()}",
         "note": "Simulated payment — no real charge. Replace with Razorpay/Stripe later.",
     }
@@ -1139,7 +1151,7 @@ async def create_booking(body: BookingIn, user: dict = Depends(get_current_user)
         "user_id": user["id"], "psychologist_id": body.psychologist_id,
         "psychologist_name": p["name"], "slot_id": slot["id"],
         "slot_label": slot["label"], "slot_date": slot["date"], "slot_time": slot["time"],
-        "session_type": body.session_type, "price": p["price"],
+        "session_type": body.session_type, "price": price,
         "currency": p.get("currency", "INR"), "status": "confirmed",
         "payment": payment, "created_at": datetime.now(timezone.utc).isoformat(),
     }

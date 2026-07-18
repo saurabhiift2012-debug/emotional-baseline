@@ -43,7 +43,6 @@ export default function Today() {
   if (loading) return <Screen><Loading /></Screen>;
 
   const greetKey = data?.greeting === "morning" ? "good_morning" : data?.greeting === "afternoon" ? "good_afternoon" : "good_evening";
-  const s = data?.signals || {};
   const step = data?.small_step;
 
   const sendFeedback = async (resp: string) => {
@@ -125,15 +124,21 @@ export default function Today() {
           </Card>
         )}
 
-        {/* Health signals */}
-        <SectionTitle style={styles.section}>{t("todays_signals")}</SectionTitle>
-        <View style={styles.signalGrid}>
-          <Signal icon="moon" label={t("signal_sleep")} value={fmtSleep(s.sleep?.minutes)} on={s.sleep?.connected} />
-          <Signal icon="activity" label={t("signal_steps")} value={s.steps?.value?.toLocaleString?.() || "—"} on={s.steps?.connected} />
-          <Signal icon="zap" label={t("signal_activity")} value={s.activity?.minutes != null ? `${s.activity.minutes} min` : "—"} on={s.activity?.connected} />
-          <Signal icon="heart" label={t("signal_rhr")} value={s.resting_hr?.bpm != null ? `${s.resting_hr.bpm} bpm` : "—"} on={s.resting_hr?.connected} />
-        </View>
-        <AppText style={styles.simNote}>{t("simulated_note")}</AppText>
+        {/* Talk to someone — 15-min paid call, suggested when feeling low */}
+        {data?.call_recommended && (
+          <Card tint="#EDE7F0" style={{ marginTop: spacing.lg }} testID="talk-card">
+            <View style={styles.talkTag}>
+              <Feather name="phone-call" size={12} color={colors.indigo} />
+              <AppText style={styles.talkTagText}>{t("recommended_for_you")}</AppText>
+            </View>
+            <Display style={styles.talkTitle}>{t("talk_title")}</Display>
+            <AppText style={styles.talkBody}>{t("talk_body")}</AppText>
+            <Pressable testID="book-call-button" onPress={() => router.push("/psychologists")} style={styles.talkBtn}>
+              <Feather name="phone-call" size={16} color={colors.onSurfaceInverse} />
+              <AppText style={styles.talkBtnText}>{t("book_15_call")}</AppText>
+            </Pressable>
+          </Card>
+        )}
 
         {/* Observation */}
         {data?.observation ? (
@@ -172,23 +177,6 @@ export default function Today() {
   );
 }
 
-function Signal({ icon, label, value, on }: { icon: any; label: string; value: string; on?: boolean }) {
-  return (
-    <View style={styles.signal}>
-      <Feather name={icon} size={18} color={on ? colors.indigo : colors.onSurfaceSecondary} />
-      <AppText style={styles.signalLabel}>{label}</AppText>
-      <Display style={styles.signalValue}>{on ? value : "—"}</Display>
-    </View>
-  );
-}
-
-function fmtSleep(min?: number) {
-  if (min == null) return "—";
-  const h = Math.floor(min / 60);
-  const m = min % 60;
-  return `${h}h ${m}m`;
-}
-
 function fmtTime(iso?: string) {
   if (!iso) return "";
   try {
@@ -221,6 +209,12 @@ const styles = StyleSheet.create({
   entryCtx: { fontSize: T.sm, color: colors.indigo, marginTop: 2 },
   entryTime: { fontSize: T.sm, color: colors.onSurfaceSecondary },
   multiNote: { fontSize: T.sm, color: colors.onSurfaceSecondary, fontStyle: "italic", marginTop: spacing.md },
+  talkTag: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: spacing.sm },
+  talkTagText: { color: colors.indigo, fontSize: T.sm, fontWeight: "600" },
+  talkTitle: { fontSize: T.xl, lineHeight: 28, marginBottom: 4 },
+  talkBody: { color: colors.onSurfaceSecondary, fontSize: T.base, lineHeight: 22, marginBottom: spacing.lg },
+  talkBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.sm, backgroundColor: colors.indigo, borderRadius: radius.pill, height: 50 },
+  talkBtnText: { color: colors.onSurfaceInverse, fontWeight: "600", fontSize: T.lg },
   bannerRow: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   bannerQ: { fontSize: 22, lineHeight: 28 },
   bannerCta: { width: 48, height: 48, borderRadius: 24, backgroundColor: colors.amber, alignItems: "center", justifyContent: "center" },

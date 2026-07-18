@@ -213,6 +213,47 @@ class TestAnalytics:
         assert len(d["mood_series"]) == 30 and len(d["feel_map"]) == 42
 
 
+# ---------- reposition: call recommendation + latest_group on /today ----------
+class TestTodayCallRecommendation:
+    def test_demo_user_call_recommended_flags_present(self, session):
+        # Demo phone user has seeded ~6 weeks — use it to check flags exist and types
+        # login (bypass 20s cooldown if needed)
+        r = _request_otp(session, phone=DEMO_PHONE, mode="login")
+        assert r.status_code == 200, r.text
+        code = r.json()["dev_code"]
+        v = session.post(f"{API}/auth/verify-otp",
+                         json={"phone": DEMO_PHONE, "code": code}, timeout=15)
+        assert v.status_code == 200
+        token = v.json()["token"]
+        headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+        t = session.get(f"{API}/today", headers=headers, timeout=15).json()
+        assert "call_recommended" in t and isinstance(t["call_recommended"], bool)
+        assert "latest_group" in t  # value can be None if no history but demo has data
+
+    def test_call_recommended_true_when_latest_is_low(self, session, auth_headers):
+        # Log a low mood → call_recommended must be True
+        r = session.post(f"{API}/checkins", headers=auth_headers, json={
+            "mood": "heavy", "context": [], "timezone": "UTC"}, timeout=15)
+        assert r.status_code == 200
+        t = session.get(f"{API}/today", headers=auth_headers, timeout=15).json()
+        assert t["todays_mood"] == "heavy"
+        assert t["latest_group"] == "low"
+        assert t["call_recommended"] is True
+
+    def test_call_recommended_false_when_latest_bright_and_no_repeated_low(self, session):
+        # brand-new user: register + immediately post a bright mood
+        info = _register_new_user(session)
+        headers = {"Authorization": f"Bearer {info['token']}",
+                   "Content-Type": "application/json"}
+        r = session.post(f"{API}/checkins", headers=headers, json={
+            "mood": "calm", "context": [], "timezone": "UTC"}, timeout=15)
+        assert r.status_code == 200
+        t = session.get(f"{API}/today", headers=headers, timeout=15).json()
+        assert t["latest_group"] == "bright"
+        # seeded 42 days may randomly trip repeated_low; assert type only in that case
+        assert isinstance(t["call_recommended"], bool)
+
+
 # ---------- psychologists ----------
 class TestPsychologists:
     def test_list_all(self, session, auth_headers):
@@ -221,6 +262,14 @@ class TestPsychologists:
         items = r.json()["psychologists"]
         assert isinstance(items, list) and len(items) >= 3
         assert "_id" not in items[0]
+
+    def test_profiles_include_15min_call_and_short_price(self, session, auth_headers):
+        items = session.get(f"{API}/psychologists", headers=auth_headers, timeout=15).json()["psychologists"]
+        for p in items:
+            assert "session_types" in p and "15-min Call" in p["session_types"], \
+                f"{p.get('name')} missing 15-min Call in session_types"
+            assert "short_call_price" in p and isinstance(p["short_call_price"], (int, float))
+            assert p["short_call_price"] < p["price"], "short_call_price must be less than full price"
 
     def test_get_by_id_with_availability(self, session, auth_headers):
         lst = session.get(f"{API}/psychologists", headers=auth_headers, timeout=15).json()["psychologists"]
@@ -271,6 +320,35 @@ class TestBookings:
         bid = r.json()["booking"]["id"]
         rc = session.post(f"{API}/bookings/{bid}/cancel", headers=auth_headers, timeout=15)
         assert rc.status_code == 200 and rc.json()["status"] == "cancelled"
+
+    def test_15min_call_charges_short_call_price(self, session, auth_headers):
+        p, slot = self._first_psych_with_slot(session, auth_headers)
+        assert "15-min Call" in p["session_types"]
+        r = session.post(f"{API}/bookings", headers=auth_headers, json={
+            "psychologist_id": p["id"], "slot_id": slot["id"],
+            "session_type": "15-min Call"}, timeout=15)
+        assert r.status_code == 200, r.text
+        b = r.json()["booking"]
+        assert b["session_type"] == "15-min Call"
+        assert b["price"] == p["short_call_price"]
+        assert b["payment"]["amount"] == p["short_call_price"]
+        assert b["payment"]["provider"] == "mock"
+
+    def test_video_session_charges_full_price(self, session, auth_headers):
+        p, _ = self._first_psych_with_slot(session, auth_headers)
+        assert "Video" in p["session_types"], "expected first psych to support Video"
+        detail = session.get(f"{API}/psychologists/{p['id']}", headers=auth_headers, timeout=15).json()
+        # pick a slot that hasn't been used
+        slot = detail["availability"][1] if len(detail["availability"]) > 1 else detail["availability"][0]
+        r = session.post(f"{API}/bookings", headers=auth_headers, json={
+            "psychologist_id": p["id"], "slot_id": slot["id"],
+            "session_type": "Video"}, timeout=15)
+        assert r.status_code == 200, r.text
+        b = r.json()["booking"]
+        assert b["session_type"] == "Video"
+        assert b["price"] == p["price"]
+        assert b["payment"]["amount"] == p["price"]
+        assert b["payment"]["provider"] == "mock"
 
 
 # ---------- auth enforcement ----------

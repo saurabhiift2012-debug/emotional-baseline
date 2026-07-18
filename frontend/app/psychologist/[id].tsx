@@ -40,8 +40,13 @@ export default function PsychologistDetail() {
     finally { setBooking(false); }
   };
 
+  const priceFor = (type: string | null) =>
+    type === "15-min Call" ? (p?.short_call_price ?? p?.price) : p?.price;
+
   if (loading) return <Screen><Loading /></Screen>;
   if (!p) return <Screen><View style={styles.header}><Pressable onPress={() => router.back()}><Feather name="arrow-left" size={22} color={colors.onSurface} /></Pressable></View></Screen>;
+
+  const selectedPrice = priceFor(sessionType);
 
   if (confirmed) {
     return (
@@ -93,7 +98,7 @@ export default function PsychologistDetail() {
         <View style={styles.chipRow}>
           {p.session_types.map((s: string) => (
             <Pressable key={s} testID={`session-type-${s}`} onPress={() => { Haptics.selectionAsync(); setSessionType(s); }} style={[styles.chip, sessionType === s && styles.chipActive]}>
-              <AppText style={[styles.chipText, sessionType === s && styles.chipTextActive]}>{s}</AppText>
+              <AppText style={[styles.chipText, sessionType === s && styles.chipTextActive]}>{s} · ₹{priceFor(s)}</AppText>
             </Pressable>
           ))}
         </View>
@@ -112,7 +117,7 @@ export default function PsychologistDetail() {
         <View style={{ height: spacing.md }} />
         <PrimaryButton
           testID="confirm-pay-button"
-          label={`${t("confirm_pay")} · ₹${p.price}`}
+          label={`${t("confirm_pay")} · ₹${selectedPrice}`}
           disabled={!slot || !sessionType || booking}
           onPress={book}
         />
