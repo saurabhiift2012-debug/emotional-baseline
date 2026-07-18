@@ -4,6 +4,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } fr
 import * as Haptics from "expo-haptics";
 import { colors, spacing, radius, font, T } from "./ui";
 import { Mood, GROUP_TINT } from "./moods";
+import { MoodEmoji } from "./MoodEmoji";
 import { Lang } from "./i18n";
 
 function MoodTile({ mood, selected, onPress, lang, size }: { mood: Mood; selected: boolean; onPress: () => void; lang: Lang; size: number }) {
@@ -34,7 +35,7 @@ function MoodTile({ mood, selected, onPress, lang, size }: { mood: Mood; selecte
           anim,
         ]}
       >
-        <Text style={{ fontSize: size * 0.42 }}>{mood.emoji}</Text>
+        <MoodEmoji mood={mood} size={size * 0.5} />
       </Animated.View>
       <Text style={[styles.label, selected && styles.labelSelected]} numberOfLines={1}>
         {lang === "hi" ? mood.hi : mood.en}

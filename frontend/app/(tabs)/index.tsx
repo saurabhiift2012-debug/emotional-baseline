@@ -7,6 +7,7 @@ import { useApp } from "@/src/AppContext";
 import { api } from "@/src/api";
 import { moodByKey } from "@/src/moods";
 import { MoodSelector } from "@/src/MoodSelector";
+import { MoodEmoji } from "@/src/MoodEmoji";
 import { Screen, Display, AppText, Card, SectionTitle, Loading, colors, spacing, radius, font, T } from "@/src/ui";
 
 export default function Today() {
@@ -94,7 +95,7 @@ export default function Today() {
               const m = moodByKey(e.mood, moods);
               return (
                 <View key={i} style={[styles.entryRow, i < data.todays_entries.length - 1 && styles.entryDivider]}>
-                  <Text style={styles.entryEmoji}>{m?.emoji}</Text>
+                  <MoodEmoji mood={m} size={30} />
                   <View style={{ flex: 1 }}>
                     <AppText style={styles.entryMood}>{m ? (lang === "hi" ? m.hi : m.en) : e.mood}</AppText>
                     {e.note ? <AppText style={styles.entryNote}>{e.note}</AppText> : null}

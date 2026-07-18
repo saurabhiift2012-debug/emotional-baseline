@@ -84,15 +84,15 @@ async def get_current_user(creds: HTTPAuthorizationCredentials = Depends(securit
 # value: higher = feeling better; used only for internal statistics
 # ----------------------------------------------------------------------------
 MOODS = [
-    {"key": "heavy",      "emoji": "😔", "group": "low",     "value": 1, "en": "Heavy",      "hi": "भारी"},
-    {"key": "anxious",    "emoji": "😰", "group": "low",     "value": 2, "en": "Anxious",    "hi": "घबराहट"},
-    {"key": "frustrated", "emoji": "😤", "group": "low",     "value": 2, "en": "Frustrated", "hi": "खीझ"},
-    {"key": "numb",       "emoji": "😶", "group": "neutral", "value": 3, "en": "Numb",       "hi": "सुन्न"},
-    {"key": "foggy",      "emoji": "😑", "group": "neutral", "value": 3, "en": "Foggy",      "hi": "धुंधला"},
-    {"key": "okay",       "emoji": "😐", "group": "neutral", "value": 4, "en": "Okay",       "hi": "ठीक-ठाक"},
-    {"key": "hopeful",    "emoji": "🌱", "group": "bright",  "value": 5, "en": "Hopeful",    "hi": "उम्मीद"},
-    {"key": "calm",       "emoji": "😌", "group": "bright",  "value": 5, "en": "Calm",        "hi": "शांत"},
-    {"key": "energised",  "emoji": "⚡", "group": "bright",  "value": 6, "en": "Energised",  "hi": "ऊर्जा"},
+    {"key": "heavy",      "emoji": "😔", "cp": "1f614", "group": "low",     "value": 1, "en": "Heavy",      "hi": "भारी"},
+    {"key": "anxious",    "emoji": "😰", "cp": "1f630", "group": "low",     "value": 2, "en": "Anxious",    "hi": "घबराहट"},
+    {"key": "frustrated", "emoji": "😤", "cp": "1f624", "group": "low",     "value": 2, "en": "Frustrated", "hi": "खीझ"},
+    {"key": "numb",       "emoji": "😶", "cp": "1f636", "group": "neutral", "value": 3, "en": "Numb",       "hi": "सुन्न"},
+    {"key": "foggy",      "emoji": "😑", "cp": "1f611", "group": "neutral", "value": 3, "en": "Foggy",      "hi": "धुंधला"},
+    {"key": "okay",       "emoji": "😐", "cp": "1f610", "group": "neutral", "value": 4, "en": "Okay",       "hi": "ठीक-ठाक"},
+    {"key": "hopeful",    "emoji": "🌱", "cp": "1f331", "group": "bright",  "value": 5, "en": "Hopeful",    "hi": "उम्मीद"},
+    {"key": "calm",       "emoji": "😌", "cp": "1f60c", "group": "bright",  "value": 5, "en": "Calm",        "hi": "शांत"},
+    {"key": "energised",  "emoji": "⚡", "cp": "26a1",  "group": "bright",  "value": 6, "en": "Energised",  "hi": "ऊर्जा"},
 ]
 MOOD_BY_KEY = {m['key']: m for m in MOODS}
 

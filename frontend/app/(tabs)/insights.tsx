@@ -6,6 +6,7 @@ import * as Haptics from "expo-haptics";
 import { useApp } from "@/src/AppContext";
 import { api } from "@/src/api";
 import { moodByKey, GROUP_TINT } from "@/src/moods";
+import { MoodEmoji } from "@/src/MoodEmoji";
 import { Screen, Display, AppText, Card, SectionTitle, Loading, ConfidenceBadge, colors, spacing, radius, T } from "@/src/ui";
 
 export default function Insights() {
@@ -77,7 +78,7 @@ export default function Insights() {
                 return (
                   <View key={i} style={styles.stripCol} testID={`daily-mood-${d.date}`}>
                     <View style={[styles.stripTile, { backgroundColor: d.group ? GROUP_TINT[d.group] : colors.surfaceSecondary, borderColor: d.mood ? "transparent" : colors.border }]}>
-                      <Text style={styles.stripEmoji}>{m ? m.emoji : ""}</Text>
+                      {m ? <MoodEmoji mood={m} size={26} /> : null}
                     </View>
                     <AppText style={styles.stripDay}>{wd}</AppText>
                   </View>
