@@ -54,3 +54,12 @@ how I feel?" via a DETERMINISTIC pattern engine. Never diagnoses. Private by def
 ## Next Tasks
 1. Confirm payment provider, then build psychologist discovery + booking (P1).
 2. Wire real HealthKit / Health Connect behind a native build.
+
+## Update 2026-06-18 (UX iteration)
+- Me privacy section reduced to 2 toggles (Health Data, Psychologist Sharing); removed 8 others.
+- Feel Map recolored (visible rose/amber/sage GROUP_COLOR) + legend.
+- Export my data now generates a PDF (expo-print + expo-sharing; native only).
+- New Wellbeing Resources screen (curated EN/HI self-help cards) linked from Support.
+- PENDING (requested): Dark/Light mode with device-default — this is a theming refactor
+  across ~18 screens (StyleSheet → theme-aware makeStyles + ThemeProvider); to be done as a
+  dedicated pass to avoid breaking the UI.
