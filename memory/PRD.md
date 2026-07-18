@@ -63,3 +63,15 @@ how I feel?" via a DETERMINISTIC pattern engine. Never diagnoses. Private by def
 - PENDING (requested): Dark/Light mode with device-default — this is a theming refactor
   across ~18 screens (StyleSheet → theme-aware makeStyles + ThemeProvider); to be done as a
   dedicated pass to avoid breaking the UI.
+
+## Session update (Twilio + Razorpay + Theme + Logo) — DONE
+- Twilio Verify SMS OTP live; Indian +91 only (10-digit, starts 6-9). Demo number
+  +919999900000 uses static code 123456 for tests. (backend/server.py)
+- Razorpay (TEST) real payments: /api/bookings/order (Razorpay order + pending booking)
+  -> WebView checkout (src/RazorpayCheckout.tsx) -> /api/bookings/verify (HMAC signature).
+  Real card checkout renders only on native builds (react-native-webview web limitation).
+- Dark/Light/System theming DONE across all screens: ThemeProvider (persisted) + useTheme
+  + makeStyles(colors). Appearance toggle in Me tab. theme.ts has light/dark palettes.
+- TherapiShots logo applied to app icon/splash/adaptive/favicon + onboarding/login/register.
+- Deferred: P1 security hardening (fail-closed JWT, CORS restriction, ObjectId guards,
+  remove unused email/password routes).
