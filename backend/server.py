@@ -352,7 +352,7 @@ def build_insights(checkins, health_by_date):
         # resting_hr is inverse (lower rhr ~ better) so flip interpretation
         if metric == "resting_hr":
             if r < 0:
-                helps.append(_insight(f"mood_{metric}", "consistent" and conf,
+                helps.append(_insight(f"mood_{metric}", conf,
                              f"Your mood has often been higher on days with a lower resting heart rate.",
                              n, r, metric))
             else:
