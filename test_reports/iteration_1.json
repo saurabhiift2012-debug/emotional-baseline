@@ -1,0 +1,24 @@
+{
+  "summary": "TherapiShots MVP E2E test PASSED. Backend: 34/34 pytest tests pass covering config, auth (18+ gate, short-password, duplicate email, login, /me, invalid token), check-ins (create, low_mood flag, one-per-day replace, unknown mood, list, feedback), today/insights/pulse/progress, story (template + ai_text=None when ai_summaries consent OFF), me (language, consents, export, delete mood scope), and auth enforcement across 8 protected endpoints. Frontend (Expo web preview @ EXPO_PUBLIC_BACKEND_URL): onboarding renders with 18+ checkbox gating the Get Started CTA (verified aria-disabled toggles true->None on check), login with demo@therapishots.app/secret123 navigates into 5-tab app, Today shows greeting/signals/small step, Insights shows 'Consistent Pattern' badges + why + feel buttons, Progress renders Wellbeing Pulse (4 statuses), 17 check-ins this month, Feel Map, Mood trend bar chart, Support shows breathing/emergency numbers (112, Tele-MANAS 14416), Me shows privacy toggles + EN/HI language pills, Check-in banner opens modal, mood tile -> continue -> save -> 'Thanks for checking in' Done screen works. Hindi language toggle correctly translates the Me screen. Story modal opens with 'This week' / 'This month' segmented toggle.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_therapishots_api.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py L355: `_insight('mood_' + metric, 'consistent' and conf, ...)` — the expression `'consistent' and conf` evaluates to `conf` (truthy short-circuit), which is what is intended, but the literal 'consistent' is dead code and looks like a bug. Recommend simplifying to just pass `conf`.",
+    "AppContext.tsx: register/login errors are re-thrown from api.ts but there is no global error boundary — currently handled locally on login/register screens, which is fine, but consider surfacing a toast for network failures on tab screens.",
+    "server.py L497-499: `pick_small_step` uses global `random.choice` (non-deterministic) rather than per-user seeded RNG; harmless but note it means Today's 'one small step' changes on every request."
+  ],
+  "updated_files": ["/app/backend/tests/test_therapishots_api.py (created)"],
+  "success_rate": {"backend": "100% (34/34)", "frontend": "100% of tested flows"},
+  "seed_data_creation": "Registration endpoint auto-seeds ~42 days of correlated mood+health history. Test fixture creates a fresh test_<uuid>@therapishots.app user per session. Demo user demo@therapishots.app was NOT modified.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Backend base URL comes from EXPO_PUBLIC_BACKEND_URL. Pydantic's EmailStr rejects .test/.example TLDs — use @example.com or @therapishots.app for test emails. Demo user is seeded manually elsewhere (present in DB). One check-in per day rule replaces (not appends) today's non-seeded check-in. AI Story requires ai_summaries consent = true AND EMERGENT_LLM_KEY env var — falls back to `ai_text: null` gracefully. All auth-protected routes correctly return 401/403 without token.",
+  "rca_of_issue": "N/A — no blocking issues found."
+}

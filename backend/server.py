@@ -1,60 +1,857 @@
-from fastapi import FastAPI, APIRouter
-from dotenv import load_dotenv
-from starlette.middleware.cors import CORSMiddleware
-from motor.motor_asyncio import AsyncIOMotorClient
+"""TherapiShots backend — private emotional wellbeing API.
+
+Design priorities: user safety, privacy, security, simplicity.
+The pattern engine is DETERMINISTIC (numpy statistics). The LLM only
+rephrases already-validated structured patterns — never raw history.
+"""
 import os
 import logging
+import random
+import math
 from pathlib import Path
-from pydantic import BaseModel, Field
-from typing import List
-import uuid
-from datetime import datetime
+from datetime import datetime, date, timezone, timedelta
+from typing import List, Optional, Annotated, Any
 
+import jwt
+import bcrypt
+import numpy as np
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from starlette.middleware.cors import CORSMiddleware
+from motor.motor_asyncio import AsyncIOMotorClient
+from pydantic import BaseModel, Field, EmailStr, BeforeValidator, field_validator
+from bson import ObjectId
+from dotenv import load_dotenv
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-# MongoDB connection
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
-# Create the main app without a prefix
-app = FastAPI()
+SECRET_KEY = os.environ.get('JWT_SECRET', 'therapishots-dev-secret-change-in-prod')
+ALGORITHM = 'HS256'
+ACCESS_TOKEN_EXPIRE_DAYS = 30
 
-# Create a router with the /api prefix
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger("therapishots")
+
+app = FastAPI(title="TherapiShots API")
 api_router = APIRouter(prefix="/api")
+security = HTTPBearer(auto_error=True)
+
+# ----------------------------------------------------------------------------
+# Mongo helpers
+# ----------------------------------------------------------------------------
+PyObjectId = Annotated[str, BeforeValidator(str)]
 
 
-# Define Models
-class StatusCheck(BaseModel):
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    client_name: str
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+def hash_password(pw: str) -> str:
+    return bcrypt.hashpw(pw.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
-class StatusCheckCreate(BaseModel):
-    client_name: str
 
-# Add your routes to the router instead of directly to app
+def verify_password(pw: str, hashed: str) -> bool:
+    try:
+        return bcrypt.checkpw(pw.encode('utf-8'), hashed.encode('utf-8'))
+    except Exception:
+        return False
+
+
+def create_token(user_id: str) -> str:
+    payload = {
+        'sub': user_id,
+        'exp': datetime.now(timezone.utc) + timedelta(days=ACCESS_TOKEN_EXPIRE_DAYS),
+    }
+    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+
+
+async def get_current_user(creds: HTTPAuthorizationCredentials = Depends(security)) -> dict:
+    try:
+        payload = jwt.decode(creds.credentials, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id = payload.get('sub')
+    except jwt.PyJWTError:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    user = await db.users.find_one({"_id": ObjectId(user_id)})
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+    user['id'] = str(user['_id'])
+    return user
+
+
+# ----------------------------------------------------------------------------
+# Mood catalogue (all emotions valid — grouped, NOT good/bad colour coded)
+# value: higher = feeling better; used only for internal statistics
+# ----------------------------------------------------------------------------
+MOODS = [
+    {"key": "heavy",      "emoji": "😔", "group": "low",     "value": 1, "en": "Heavy",      "hi": "भारी"},
+    {"key": "anxious",    "emoji": "😰", "group": "low",     "value": 2, "en": "Anxious",    "hi": "घबराहट"},
+    {"key": "frustrated", "emoji": "😤", "group": "low",     "value": 2, "en": "Frustrated", "hi": "खीझ"},
+    {"key": "numb",       "emoji": "😶", "group": "neutral", "value": 3, "en": "Numb",       "hi": "सुन्न"},
+    {"key": "foggy",      "emoji": "😑", "group": "neutral", "value": 3, "en": "Foggy",      "hi": "धुंधला"},
+    {"key": "okay",       "emoji": "😐", "group": "neutral", "value": 4, "en": "Okay",       "hi": "ठीक-ठाक"},
+    {"key": "hopeful",    "emoji": "🌱", "group": "bright",  "value": 5, "en": "Hopeful",    "hi": "उम्मीद"},
+    {"key": "calm",       "emoji": "😌", "group": "bright",  "value": 5, "en": "Calm",        "hi": "शांत"},
+    {"key": "energised",  "emoji": "⚡", "group": "bright",  "value": 6, "en": "Energised",  "hi": "ऊर्जा"},
+]
+MOOD_BY_KEY = {m['key']: m for m in MOODS}
+
+CONTEXT_TAGS = ["work", "family", "relationships", "health", "sleep",
+                "money", "exercise", "social", "travel", "weather", "other"]
+
+# Curated One Small Step actions (never generated by an LLM)
+SMALL_STEPS = [
+    {"key": "breathing", "icon": "wind",    "en": "2-minute breathing", "hi": "2-मिनट की साँस",
+     "en_desc": "Slow, even breaths to settle your body.", "hi_desc": "शरीर को शांत करने के लिए धीमी साँसें।"},
+    {"key": "walk", "icon": "navigation", "en": "Short walk", "hi": "थोड़ी सैर",
+     "en_desc": "A few minutes of gentle movement.", "hi_desc": "कुछ मिनट की हल्की गतिविधि।"},
+    {"key": "stretch", "icon": "activity", "en": "Stretch", "hi": "स्ट्रेच",
+     "en_desc": "Loosen up your shoulders and neck.", "hi_desc": "कंधों और गर्दन को ढीला करें।"},
+    {"key": "hydrate", "icon": "droplet", "en": "Hydrate", "hi": "पानी पिएँ",
+     "en_desc": "Have a glass of water.", "hi_desc": "एक गिलास पानी पिएँ।"},
+    {"key": "outside", "icon": "sun", "en": "Step outside", "hi": "बाहर जाएँ",
+     "en_desc": "Spend a few minutes outdoors.", "hi_desc": "कुछ मिनट बाहर बिताएँ।"},
+    {"key": "connect", "icon": "message-circle", "en": "Contact someone you trust", "hi": "किसी अपने से बात करें",
+     "en_desc": "Reach out to a person you feel safe with.", "hi_desc": "किसी भरोसेमंद व्यक्ति से जुड़ें।"},
+    {"key": "winddown", "icon": "moon", "en": "Wind-down routine", "hi": "आराम की दिनचर्या",
+     "en_desc": "Ease toward rest with a calm routine.", "hi_desc": "शांत दिनचर्या के साथ आराम की ओर बढ़ें।"},
+]
+
+CONSENT_KEYS = ["mood_history", "health_data", "sleep_data", "activity_data",
+                "heart_data", "personal_insights", "ai_summaries",
+                "psychologist_sharing", "analytics", "marketing"]
+
+
+# ----------------------------------------------------------------------------
+# Pydantic models
+# ----------------------------------------------------------------------------
+class RegisterIn(BaseModel):
+    email: EmailStr
+    password: str
+    name: str
+    date_of_birth: str  # YYYY-MM-DD
+    language: str = "en"
+
+    @field_validator('password')
+    @classmethod
+    def pw_len(cls, v):
+        if len(v) < 6:
+            raise ValueError('Password must be at least 6 characters')
+        return v
+
+    @field_validator('date_of_birth')
+    @classmethod
+    def check_18(cls, v):
+        try:
+            dob = datetime.strptime(v, "%Y-%m-%d").date()
+        except ValueError:
+            raise ValueError('Date of birth must be YYYY-MM-DD')
+        today = date.today()
+        age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+        if age < 18:
+            raise ValueError('You must be 18 or older to use TherapiShots.')
+        return v
+
+
+class LoginIn(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class CheckinIn(BaseModel):
+    mood: str
+    context: List[str] = []
+    note: Optional[str] = None
+    timezone: str = "UTC"
+
+
+class ObservationFeedbackIn(BaseModel):
+    checkin_id: Optional[str] = None
+    insight_key: Optional[str] = None
+    response: str  # yes | maybe | not_really
+
+
+class ConsentIn(BaseModel):
+    consents: dict
+
+
+# ----------------------------------------------------------------------------
+# Simulated health data (stands in for HealthKit / Health Connect until a
+# native build ships). Deterministic per user+date so results are stable.
+# ----------------------------------------------------------------------------
+def _rng_for(user_id: str, d: str) -> random.Random:
+    return random.Random(f"{user_id}:{d}")
+
+
+def gen_health_for_day(user_id: str, d: str, mood_value: Optional[int] = None) -> dict:
+    rng = _rng_for(user_id, d)
+    base_sleep = 7 * 60
+    # If we know the mood, correlate sleep/activity so real patterns emerge.
+    mv = mood_value if mood_value is not None else 4
+    sleep = int(rng.gauss(base_sleep + (mv - 4) * 22, 45))
+    sleep = max(240, min(600, sleep))
+    steps = int(rng.gauss(6000 + (mv - 4) * 700, 1800))
+    steps = max(500, steps)
+    activity = int(rng.gauss(28 + (mv - 4) * 6, 12))
+    activity = max(0, activity)
+    exercise = max(0, int(activity * rng.uniform(0.4, 0.8)))
+    rhr = int(rng.gauss(70 - (mv - 4) * 1.5, 4))
+    rhr = max(48, min(95, rhr))
+    hrv = int(rng.gauss(55 + (mv - 4) * 3, 10))
+    hrv = max(15, hrv)
+    sleep_consistency = round(max(0.3, min(1.0, rng.gauss(0.7 + (mv - 4) * 0.03, 0.12))), 2)
+    return {
+        "date": d,
+        "sleep_minutes": sleep,
+        "sleep_consistency": sleep_consistency,
+        "steps": steps,
+        "activity_minutes": activity,
+        "exercise_minutes": exercise,
+        "resting_hr": rhr,
+        "hrv": hrv,
+    }
+
+
+async def ensure_health_day(user_id: str, d: str, mood_value: Optional[int] = None) -> dict:
+    doc = await db.health_days.find_one({"user_id": user_id, "date": d})
+    if doc:
+        doc.pop('_id', None)
+        return doc
+    hd = gen_health_for_day(user_id, d, mood_value)
+    hd["user_id"] = user_id
+    await db.health_days.insert_one(dict(hd))
+    hd.pop('_id', None)
+    return hd
+
+
+# ----------------------------------------------------------------------------
+# Seed 6 weeks of realistic, correlated history on registration so that the
+# Insights / Progress / Pulse screens have meaningful content immediately.
+# (Uses simulated health data — clearly demo history.)
+# ----------------------------------------------------------------------------
+async def seed_history(user_id: str, days: int = 42):
+    rng = random.Random(f"seed:{user_id}")
+    mood_keys = [m['key'] for m in MOODS]
+    weekday_bias = {0: -0.6, 1: -0.3, 2: 0.0, 3: 0.1, 4: 0.4, 5: 0.6, 6: 0.3}
+    today = date.today()
+    checkins = []
+    healths = []
+    for i in range(days, 0, -1):
+        d = today - timedelta(days=i)
+        ds = d.isoformat()
+        # simulate a sleep-driven mood with weekday bias
+        prev_sleep_good = rng.random() < 0.5
+        target = 4 + weekday_bias[d.weekday()] + (0.9 if prev_sleep_good else -0.9) + rng.gauss(0, 0.8)
+        target = max(1, min(6, round(target)))
+        candidates = [m for m in MOODS if abs(m['value'] - target) <= 1]
+        chosen = rng.choice(candidates) if candidates else rng.choice(MOODS)
+        # 82% of days have a check-in
+        if rng.random() < 0.82:
+            ctx = []
+            if chosen['value'] <= 3 and rng.random() < 0.6:
+                ctx = rng.sample(["work", "sleep", "money", "health"], k=rng.randint(1, 2))
+            elif rng.random() < 0.3:
+                ctx = [rng.choice(["social", "exercise", "family", "weather"])]
+            checkins.append({
+                "user_id": user_id, "date": ds, "mood": chosen['key'],
+                "mood_value": chosen['value'], "group": chosen['group'],
+                "context": ctx, "note": None, "timezone": "UTC",
+                "created_at": datetime.combine(d, datetime.min.time(), timezone.utc).isoformat(),
+                "seeded": True,
+            })
+        hd = gen_health_for_day(user_id, ds, chosen['value'])
+        hd["user_id"] = user_id
+        healths.append(hd)
+    if checkins:
+        await db.checkins.insert_many(checkins)
+    if healths:
+        await db.health_days.insert_many(healths)
+
+
+# ----------------------------------------------------------------------------
+# Analytics: personal baseline + deterministic pattern engine
+# ----------------------------------------------------------------------------
+async def load_frames(user_id: str):
+    checkins = await db.checkins.find({"user_id": user_id}).sort("date", 1).to_list(1000)
+    healths = await db.health_days.find({"user_id": user_id}).sort("date", 1).to_list(1000)
+    for c in checkins:
+        c.pop('_id', None)
+    for h in healths:
+        h.pop('_id', None)
+    health_by_date = {h['date']: h for h in healths}
+    return checkins, healths, health_by_date
+
+
+def _pearson(x, y):
+    if len(x) < 3:
+        return 0.0
+    x = np.array(x, dtype=float)
+    y = np.array(y, dtype=float)
+    if np.std(x) == 0 or np.std(y) == 0:
+        return 0.0
+    r = float(np.corrcoef(x, y)[0, 1])
+    if math.isnan(r):
+        return 0.0
+    return r
+
+
+def confidence_from(n: int, r: float) -> Optional[str]:
+    ar = abs(r)
+    if n < 7 or ar < 0.18:
+        return None
+    if n < 15:
+        return "early_signal"
+    if n < 30:
+        return "emerging"
+    return "consistent"
+
+
+def compute_baseline(checkins, healths):
+    def avg(vals):
+        vals = [v for v in vals if v is not None]
+        return round(float(np.mean(vals)), 1) if vals else None
+    return {
+        "mood": avg([c['mood_value'] for c in checkins]),
+        "sleep_minutes": avg([h['sleep_minutes'] for h in healths]),
+        "steps": avg([h['steps'] for h in healths]),
+        "activity_minutes": avg([h['activity_minutes'] for h in healths]),
+        "resting_hr": avg([h['resting_hr'] for h in healths]),
+        "hrv": avg([h['hrv'] for h in healths]),
+        "checkin_count": len(checkins),
+    }
+
+
+METRIC_LABELS = {
+    "sleep_minutes": {"en": "sleep", "hi": "नींद"},
+    "sleep_consistency": {"en": "sleep consistency", "hi": "नींद की नियमितता"},
+    "steps": {"en": "steps", "hi": "कदम"},
+    "activity_minutes": {"en": "activity", "hi": "गतिविधि"},
+    "resting_hr": {"en": "resting heart rate", "hi": "आराम की हृदय गति"},
+    "hrv": {"en": "heart rate variability", "hi": "हृदय गति परिवर्तनशीलता"},
+}
+
+
+def build_insights(checkins, health_by_date):
+    """Deterministic pattern engine. Returns categorised insight cards."""
+    helps, harder, notice, context_patterns = [], [], [], []
+
+    paired = [(c, health_by_date.get(c['date'])) for c in checkins]
+    paired = [(c, h) for c, h in paired if h]
+
+    # mood vs each health metric (same-day)
+    for metric in ["sleep_minutes", "steps", "activity_minutes", "hrv", "resting_hr"]:
+        xs = [h[metric] for _, h in paired]
+        ys = [c['mood_value'] for c, _ in paired]
+        n = len(xs)
+        r = _pearson(xs, ys)
+        conf = confidence_from(n, r)
+        if not conf:
+            continue
+        label = METRIC_LABELS[metric]['en']
+        higher_better = r > 0
+        # resting_hr is inverse (lower rhr ~ better) so flip interpretation
+        if metric == "resting_hr":
+            if r < 0:
+                helps.append(_insight(f"mood_{metric}", "consistent" and conf,
+                             f"Your mood has often been higher on days with a lower resting heart rate.",
+                             n, r, metric))
+            else:
+                harder.append(_insight(f"mood_{metric}", conf,
+                             f"Higher resting heart rate and lower mood have appeared together.",
+                             n, r, metric))
+            continue
+        if higher_better:
+            helps.append(_insight(f"mood_{metric}", conf,
+                         f"Your mood has often been higher on days following more {label}.",
+                         n, r, metric))
+        else:
+            harder.append(_insight(f"mood_{metric}", conf,
+                         f"Lower mood and less {label} have appeared together more frequently.",
+                         n, r, metric))
+
+    # previous-night sleep -> next-day mood
+    prev_pairs = []
+    dates_sorted = sorted({c['date'] for c in checkins})
+    checkin_by_date = {c['date']: c for c in checkins}
+    for ds in dates_sorted:
+        d = date.fromisoformat(ds)
+        prev = (d - timedelta(days=1)).isoformat()
+        if prev in health_by_date and ds in checkin_by_date:
+            prev_pairs.append((health_by_date[prev]['sleep_minutes'], checkin_by_date[ds]['mood_value']))
+    if len(prev_pairs) >= 7:
+        r = _pearson([p[0] for p in prev_pairs], [p[1] for p in prev_pairs])
+        conf = confidence_from(len(prev_pairs), r)
+        if conf and r > 0:
+            helps.append(_insight("prevsleep_mood", conf,
+                         "On days following longer sleep, you've often reported feeling better.",
+                         len(prev_pairs), r, "sleep_minutes"))
+
+    # day of week
+    by_wd = {}
+    for c in checkins:
+        wd = date.fromisoformat(c['date']).weekday()
+        by_wd.setdefault(wd, []).append(c['mood_value'])
+    if len(checkins) >= 10 and by_wd:
+        means = {wd: np.mean(v) for wd, v in by_wd.items() if len(v) >= 2}
+        if means:
+            overall = np.mean([c['mood_value'] for c in checkins])
+            low_wd = min(means, key=means.get)
+            if means[low_wd] <= overall - 0.5:
+                names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+                notice.append(_insight("weekday", "emerging" if len(checkins) >= 15 else "early_signal",
+                             f"Your mood has tended to be lower on {names[low_wd]}s.",
+                             len(checkins), 0.3, "weekday"))
+
+    # context patterns
+    overall_mood = np.mean([c['mood_value'] for c in checkins]) if checkins else 4
+    ctx_stats = {}
+    for c in checkins:
+        for t in c.get('context', []):
+            ctx_stats.setdefault(t, []).append(c['mood_value'])
+    for tag, vals in ctx_stats.items():
+        if len(vals) >= 3:
+            m = np.mean(vals)
+            if m <= overall_mood - 0.4:
+                context_patterns.append(_insight(f"ctx_{tag}", "emerging" if len(vals) >= 6 else "early_signal",
+                             f"{tag.capitalize()} has appeared frequently in your lower-mood check-ins.",
+                             len(vals), 0.3, "context"))
+    return {
+        "helps": helps,
+        "harder": harder,
+        "notice": notice,
+        "context": context_patterns,
+    }
+
+
+def _insight(key, confidence, text, n, r, metric):
+    return {
+        "key": key,
+        "confidence": confidence,
+        "text": text,
+        "observations": n,
+        "direction": "positive" if r > 0 else "negative",
+        "effect": round(abs(r), 2),
+        "metric": metric,
+        "why": f"Based on {n} check-ins with matching data.",
+    }
+
+
+def compute_pulse(checkins, healths, health_by_date):
+    """Wellbeing Pulse: recent 7 days vs the prior baseline period."""
+    today = date.today()
+    recent_dates = {(today - timedelta(days=i)).isoformat() for i in range(0, 8)}
+    base_dates = {(today - timedelta(days=i)).isoformat() for i in range(8, 36)}
+
+    def metric_status(recent_vals, base_vals, inverse=False):
+        recent_vals = [v for v in recent_vals if v is not None]
+        base_vals = [v for v in base_vals if v is not None]
+        if len(recent_vals) < 2 or len(base_vals) < 3:
+            return "not_enough"
+        r_mean, b_mean = np.mean(recent_vals), np.mean(base_vals)
+        b_std = np.std(base_vals) or 1
+        z = (r_mean - b_mean) / b_std
+        if inverse:
+            z = -z
+        if z > 0.4:
+            return "above"
+        if z < -0.4:
+            return "below"
+        return "around"
+
+    mood = metric_status([c['mood_value'] for c in checkins if c['date'] in recent_dates],
+                         [c['mood_value'] for c in checkins if c['date'] in base_dates])
+    sleep = metric_status([h['sleep_minutes'] for h in healths if h['date'] in recent_dates],
+                         [h['sleep_minutes'] for h in healths if h['date'] in base_dates])
+    activity = metric_status([h['activity_minutes'] for h in healths if h['date'] in recent_dates],
+                            [h['activity_minutes'] for h in healths if h['date'] in base_dates])
+    recovery = metric_status([h['hrv'] for h in healths if h['date'] in recent_dates],
+                            [h['hrv'] for h in healths if h['date'] in base_dates])
+    statuses = [mood, sleep, activity, recovery]
+    below = statuses.count("below")
+    if below >= 2:
+        summary = "Several of your wellbeing signals appear lower than your recent baseline."
+    elif statuses.count("above") >= 2:
+        summary = "Several of your wellbeing signals appear higher than your recent baseline."
+    else:
+        summary = "Your wellbeing signals appear broadly around your recent baseline."
+    return {"mood": mood, "sleep": sleep, "activity": activity, "recovery": recovery,
+            "summary": summary,
+            "disclaimer": "Wellbeing Pulse reflects patterns in information you choose to share. It is not a medical or psychological diagnosis."}
+
+
+def detect_low_mood(checkins):
+    """Deterministic repeated-lower-mood detection vs personal baseline."""
+    if len(checkins) < 5:
+        return {"repeated_low": False}
+    ordered = sorted(checkins, key=lambda c: c['date'])
+    baseline = np.mean([c['mood_value'] for c in ordered])
+    last7 = ordered[-7:]
+    lows = [c for c in last7 if c['mood_value'] < baseline - 0.5]
+    return {"repeated_low": len(lows) >= 3, "count": len(lows), "window": len(last7)}
+
+
+def pick_small_step(last_mood_value: Optional[int]) -> dict:
+    if last_mood_value is None:
+        return SMALL_STEPS[0]
+    if last_mood_value <= 2:
+        return random.choice([SMALL_STEPS[0], SMALL_STEPS[5]])  # breathing / connect
+    if last_mood_value == 3:
+        return random.choice([SMALL_STEPS[1], SMALL_STEPS[4]])  # walk / outside
+    return random.choice([SMALL_STEPS[2], SMALL_STEPS[3], SMALL_STEPS[4]])
+
+
+def today_observation(checkins, health_by_date):
+    """One gentle observation for the Today screen (deterministic)."""
+    if len(checkins) < 5:
+        return None
+    healths = list(health_by_date.values())
+    base_sleep = np.mean([h['sleep_minutes'] for h in healths])
+    today = date.today().isoformat()
+    yesterday = (date.today() - timedelta(days=1)).isoformat()
+    hd = health_by_date.get(today) or health_by_date.get(yesterday)
+    if hd and hd['sleep_minutes'] < base_sleep - 40:
+        return "Your sleep was shorter than your usual pattern last night."
+    ins = build_insights(checkins, health_by_date)
+    if ins['helps']:
+        return ins['helps'][0]['text']
+    return None
+
+
+# ----------------------------------------------------------------------------
+# Routes: auth
+# ----------------------------------------------------------------------------
 @api_router.get("/")
 async def root():
-    return {"message": "Hello World"}
+    return {"app": "TherapiShots", "status": "ok"}
 
-@api_router.post("/status", response_model=StatusCheck)
-async def create_status_check(input: StatusCheckCreate):
-    status_dict = input.dict()
-    status_obj = StatusCheck(**status_dict)
-    _ = await db.status_checks.insert_one(status_obj.dict())
-    return status_obj
 
-@api_router.get("/status", response_model=List[StatusCheck])
-async def get_status_checks():
-    status_checks = await db.status_checks.find().to_list(1000)
-    return [StatusCheck(**status_check) for status_check in status_checks]
+@api_router.get("/config")
+async def config():
+    return {"moods": MOODS, "context_tags": CONTEXT_TAGS,
+            "small_steps": SMALL_STEPS, "consent_keys": CONSENT_KEYS}
 
-# Include the router in the main app
+
+@api_router.post("/auth/register")
+async def register(body: RegisterIn):
+    existing = await db.users.find_one({"email": body.email.lower()})
+    if existing:
+        raise HTTPException(status_code=400, detail="This email is already registered.")
+    # Core first-party features on; AI + third-party sharing off (privacy-first)
+    on_by_default = {"mood_history", "health_data", "sleep_data", "activity_data",
+                     "heart_data", "personal_insights"}
+    default_consents = {k: (k in on_by_default) for k in CONSENT_KEYS}
+    doc = {
+        "email": body.email.lower(),
+        "name": body.name.strip() or "there",
+        "password": hash_password(body.password),
+        "date_of_birth": body.date_of_birth,
+        "language": body.language,
+        "consents": default_consents,
+        "consent_version": 1,
+        "health_connected": {"sleep": True, "activity": True, "steps": True, "heart": True},
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    res = await db.users.insert_one(doc)
+    uid = str(res.inserted_id)
+    await seed_history(uid)
+    token = create_token(uid)
+    return {"token": token, "user": _public_user({**doc, "_id": res.inserted_id})}
+
+
+@api_router.post("/auth/login")
+async def login(body: LoginIn):
+    user = await db.users.find_one({"email": body.email.lower()})
+    if not user or not verify_password(body.password, user['password']):
+        raise HTTPException(status_code=401, detail="Incorrect email or password.")
+    token = create_token(str(user['_id']))
+    return {"token": token, "user": _public_user(user)}
+
+
+def _public_user(u: dict) -> dict:
+    return {
+        "id": str(u['_id']),
+        "email": u['email'],
+        "name": u.get('name', 'there'),
+        "language": u.get('language', 'en'),
+        "consents": u.get('consents', {}),
+        "health_connected": u.get('health_connected', {}),
+    }
+
+
+@api_router.get("/auth/me")
+async def me(user: dict = Depends(get_current_user)):
+    return _public_user(user)
+
+
+@api_router.put("/me/language")
+async def set_language(body: dict, user: dict = Depends(get_current_user)):
+    lang = body.get('language', 'en')
+    await db.users.update_one({"_id": ObjectId(user['id'])}, {"$set": {"language": lang}})
+    return {"language": lang}
+
+
+@api_router.put("/me/consents")
+async def update_consents(body: ConsentIn, user: dict = Depends(get_current_user)):
+    consents = user.get('consents', {})
+    consents.update({k: bool(v) for k, v in body.consents.items() if k in CONSENT_KEYS})
+    await db.users.update_one({"_id": ObjectId(user['id'])},
+                              {"$set": {"consents": consents},
+                               "$inc": {"consent_version": 1}})
+    await db.consent_audit.insert_one({
+        "user_id": user['id'], "consents": consents,
+        "at": datetime.now(timezone.utc).isoformat()})
+    return {"consents": consents}
+
+
+@api_router.put("/me/health-connections")
+async def health_connections(body: dict, user: dict = Depends(get_current_user)):
+    hc = user.get('health_connected', {})
+    hc.update({k: bool(v) for k, v in body.items() if k in ("sleep", "activity", "steps", "heart")})
+    await db.users.update_one({"_id": ObjectId(user['id'])}, {"$set": {"health_connected": hc}})
+    return {"health_connected": hc}
+
+
+@api_router.delete("/me/data")
+async def delete_data(scope: str = "all", user: dict = Depends(get_current_user)):
+    uid = user['id']
+    if scope in ("all", "mood"):
+        await db.checkins.delete_many({"user_id": uid})
+    if scope in ("all", "health"):
+        await db.health_days.delete_many({"user_id": uid})
+    if scope == "account":
+        await db.checkins.delete_many({"user_id": uid})
+        await db.health_days.delete_many({"user_id": uid})
+        await db.users.delete_one({"_id": ObjectId(uid)})
+    return {"deleted": scope}
+
+
+@api_router.get("/me/export")
+async def export_data(user: dict = Depends(get_current_user)):
+    checkins, healths, _ = await load_frames(user['id'])
+    return {"user": _public_user(user), "checkins": checkins, "health_days": healths}
+
+
+# ----------------------------------------------------------------------------
+# Routes: check-in
+# ----------------------------------------------------------------------------
+@api_router.post("/checkins")
+async def create_checkin(body: CheckinIn, user: dict = Depends(get_current_user)):
+    if body.mood not in MOOD_BY_KEY:
+        raise HTTPException(status_code=400, detail="Unknown mood")
+    m = MOOD_BY_KEY[body.mood]
+    today = date.today().isoformat()
+    now = datetime.now(timezone.utc)
+    doc = {
+        "user_id": user['id'], "date": today, "mood": m['key'],
+        "mood_value": m['value'], "group": m['group'],
+        "context": [c for c in body.context if c in CONTEXT_TAGS],
+        "note": (body.note or "").strip()[:500] or None,
+        "timezone": body.timezone,
+        "created_at": now.isoformat(), "seeded": False,
+    }
+    # one check-in per day: replace today's if present
+    await db.checkins.delete_many({"user_id": user['id'], "date": today, "seeded": False})
+    await db.checkins.insert_one(dict(doc))
+    await ensure_health_day(user['id'], today, m['value'])
+    doc.pop('_id', None)
+    return {"checkin": doc, "message": "Thanks for checking in.",
+            "low_mood": m['value'] <= 2}
+
+
+@api_router.get("/checkins/today")
+async def today_checkin(user: dict = Depends(get_current_user)):
+    today = date.today().isoformat()
+    c = await db.checkins.find_one({"user_id": user['id'], "date": today})
+    if c:
+        c.pop('_id', None)
+    return {"checkin": c}
+
+
+@api_router.get("/checkins")
+async def list_checkins(user: dict = Depends(get_current_user), limit: int = 200):
+    items = await db.checkins.find({"user_id": user['id']}).sort("date", -1).to_list(limit)
+    for c in items:
+        c.pop('_id', None)
+    return {"checkins": items}
+
+
+@api_router.post("/feedback")
+async def observation_feedback(body: ObservationFeedbackIn, user: dict = Depends(get_current_user)):
+    await db.feedback.insert_one({
+        "user_id": user['id'], "checkin_id": body.checkin_id,
+        "insight_key": body.insight_key, "response": body.response,
+        "at": datetime.now(timezone.utc).isoformat()})
+    return {"ok": True}
+
+
+# ----------------------------------------------------------------------------
+# Routes: today / health / insights / pulse / progress
+# ----------------------------------------------------------------------------
+@api_router.get("/today")
+async def today(user: dict = Depends(get_current_user)):
+    uid = user['id']
+    today_str = date.today().isoformat()
+    checkins, healths, hbd = await load_frames(uid)
+    hd = await ensure_health_day(uid, today_str)
+    todays = next((c for c in checkins if c['date'] == today_str), None)
+    last_value = todays['mood_value'] if todays else (checkins[-1]['mood_value'] if checkins else None)
+    hc = user.get('health_connected', {})
+    signals = {
+        "sleep": {"connected": hc.get('sleep', True), "minutes": hd['sleep_minutes']},
+        "steps": {"connected": hc.get('steps', True), "value": hd['steps']},
+        "activity": {"connected": hc.get('activity', True), "minutes": hd['activity_minutes']},
+        "resting_hr": {"connected": hc.get('heart', True), "bpm": hd['resting_hr']},
+        "hrv": {"connected": hc.get('heart', True), "value": hd['hrv']},
+    }
+    observation = today_observation(checkins, hbd) if user.get('consents', {}).get('personal_insights', True) else None
+    hour = datetime.now().hour
+    greeting = "morning" if hour < 12 else "afternoon" if hour < 18 else "evening"
+    return {
+        "greeting": greeting,
+        "name": user.get('name', 'there'),
+        "checked_in_today": todays is not None,
+        "todays_mood": todays['mood'] if todays else None,
+        "signals": signals,
+        "observation": observation,
+        "small_step": pick_small_step(last_value),
+        "low_mood_journey": detect_low_mood(checkins),
+    }
+
+
+@api_router.get("/insights")
+async def insights(user: dict = Depends(get_current_user)):
+    checkins, healths, hbd = await load_frames(user['id'])
+    baseline = compute_baseline(checkins, healths)
+    data = build_insights(checkins, hbd) if len(checkins) >= 7 else {"helps": [], "harder": [], "notice": [], "context": []}
+    return {"insights": data, "baseline": baseline, "checkin_count": len(checkins)}
+
+
+@api_router.get("/pulse")
+async def pulse(user: dict = Depends(get_current_user)):
+    checkins, healths, hbd = await load_frames(user['id'])
+    return compute_pulse(checkins, healths, hbd)
+
+
+@api_router.get("/progress")
+async def progress(user: dict = Depends(get_current_user)):
+    uid = user['id']
+    checkins, healths, hbd = await load_frames(uid)
+    today = date.today()
+    # last 30-day mood series
+    mood_series, sleep_series, steps_series, activity_series = [], [], [], []
+    checkin_by_date = {c['date']: c for c in checkins}
+    for i in range(29, -1, -1):
+        d = (today - timedelta(days=i)).isoformat()
+        c = checkin_by_date.get(d)
+        h = hbd.get(d)
+        mood_series.append({"date": d, "value": c['mood_value'] if c else None})
+        sleep_series.append({"date": d, "value": h['sleep_minutes'] if h else None})
+        steps_series.append({"date": d, "value": h['steps'] if h else None})
+        activity_series.append({"date": d, "value": h['activity_minutes'] if h else None})
+    # month check-in count
+    month_prefix = today.strftime("%Y-%m")
+    month_count = sum(1 for c in checkins if c['date'].startswith(month_prefix))
+    # feel map (last 42 days check-in mood groups)
+    feel_map = []
+    for i in range(41, -1, -1):
+        d = (today - timedelta(days=i)).isoformat()
+        c = checkin_by_date.get(d)
+        feel_map.append({"date": d, "group": c['group'] if c else None})
+    # context distribution
+    ctx_counts = {}
+    for c in checkins:
+        for t in c.get('context', []):
+            ctx_counts[t] = ctx_counts.get(t, 0) + 1
+    return {
+        "mood_series": mood_series, "sleep_series": sleep_series,
+        "steps_series": steps_series, "activity_series": activity_series,
+        "month_checkin_count": month_count, "total_checkins": len(checkins),
+        "feel_map": feel_map,
+        "context_counts": sorted(ctx_counts.items(), key=lambda x: -x[1]),
+    }
+
+
+# ----------------------------------------------------------------------------
+# Routes: My Story (AI rephrases ONLY validated structured patterns)
+# ----------------------------------------------------------------------------
+@api_router.get("/story")
+async def story(period: str = "week", user: dict = Depends(get_current_user)):
+    uid = user['id']
+    checkins, healths, hbd = await load_frames(uid)
+    today = date.today()
+    days = 7 if period == "week" else 30
+    since = (today - timedelta(days=days)).isoformat()
+    window = [c for c in checkins if c['date'] >= since]
+    ins = build_insights(checkins, hbd)
+    baseline = compute_baseline(checkins, healths)
+
+    # Structured, validated facts only (no raw notes / PII sent to the LLM)
+    facts = {
+        "period": period,
+        "checkin_count": len(window),
+        "avg_mood": round(float(np.mean([c['mood_value'] for c in window])), 1) if window else None,
+        "baseline_mood": baseline['mood'],
+        "top_helps": [i['text'] for i in ins['helps'][:2]],
+        "top_harder": [i['text'] for i in ins['harder'][:1]],
+        "context_patterns": [i['text'] for i in ins['context'][:1]],
+    }
+    template = _story_template(facts, period)
+    ai_text = None
+    if user.get('consents', {}).get('ai_summaries', False):
+        ai_text = await _ai_polish(facts, uid)
+    return {"facts": facts, "template": template, "ai_text": ai_text,
+            "used_ai": ai_text is not None}
+
+
+def _story_template(f, period) -> str:
+    label = "week" if period == "week" else "month"
+    parts = [f"You checked in {f['checkin_count']} times this {label}."]
+    if f['avg_mood'] and f['baseline_mood']:
+        if f['avg_mood'] > f['baseline_mood'] + 0.3:
+            parts.append("Your mood was generally higher than your usual pattern.")
+        elif f['avg_mood'] < f['baseline_mood'] - 0.3:
+            parts.append("Your mood was generally a little lower than your usual pattern.")
+        else:
+            parts.append("Your mood stayed broadly around your usual pattern.")
+    for t in f['top_helps']:
+        parts.append(t)
+    for t in f['top_harder']:
+        parts.append(t)
+    for t in f['context_patterns']:
+        parts.append(t)
+    parts.append("Your recent patterns suggest that sleep and movement may be worth paying attention to.")
+    return " ".join(parts)
+
+
+async def _ai_polish(facts: dict, pseudo_id: str) -> Optional[str]:
+    """Rephrase validated structured facts into a warm summary. The LLM must
+    NOT invent patterns — it only rewrites the validated facts provided."""
+    key = os.environ.get('EMERGENT_LLM_KEY')
+    if not key:
+        return None
+    try:
+        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        system = (
+            "You are a warm, plain-language wellbeing writer for an app called TherapiShots. "
+            "You will receive ONLY validated, structured facts about a person's self-reported mood "
+            "and simulated health signals. Rewrite them into a short, gentle 2-4 sentence summary. "
+            "Do NOT invent any new patterns, numbers, or causes. Do NOT diagnose. "
+            "Do NOT use alarm or excessive celebration. Never claim causation. "
+            "Keep it under 70 words."
+        )
+        chat = LlmChat(api_key=key, session_id=f"story-{pseudo_id}", system_message=system).with_model("anthropic", "claude-sonnet-4-6")
+        prompt = "Validated facts (JSON):\n" + str(facts) + "\n\nWrite the summary now."
+        resp = await chat.send_message(UserMessage(text=prompt))
+        await db.ai_usage.insert_one({
+            "pseudo_id": pseudo_id, "feature": "story",
+            "at": datetime.now(timezone.utc).isoformat()})
+        return resp.strip() if isinstance(resp, str) else str(resp).strip()
+    except Exception as e:
+        logger.warning(f"AI polish failed: {e}")
+        return None
+
+
 app.include_router(api_router)
-
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
@@ -63,12 +860,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
