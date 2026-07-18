@@ -59,6 +59,16 @@ export const STR: Dict = {
   use_emergency_above: { en: "Please use the emergency resources above for immediate support.", hi: "तत्काल सहायता के लिए कृपया ऊपर दिए आपातकालीन संसाधनों का उपयोग करें।" },
   day_streak: { en: "day streak", hi: "दिन की श्रृंखला" },
 
+  // progress chart clarity
+  feel_map_caption: { en: "Each dot is one day over the last 6 weeks. Its colour shows how that day felt overall — so you can spot stretches of heavier or brighter days at a glance.", hi: "हर बिंदु पिछले 6 सप्ताह का एक दिन है। इसका रंग बताता है कि वह दिन कुल मिलाकर कैसा रहा — ताकि आप भारी या उज्जवल दिनों की श्रृंखला एक नज़र में देख सकें।" },
+  mood_trend_caption: { en: "Your overall mood across the last 30 days. Taller bars are brighter days, shorter bars are heavier ones. Gaps are days without a check-in.", hi: "पिछले 30 दिनों में आपका समग्र मूड। ऊँची पट्टियाँ उज्जवल दिन, छोटी पट्टियाँ भारी दिन। रिक्त स्थान बिना चेक-इन वाले दिन हैं।" },
+  weeks6_ago: { en: "6 weeks ago", hi: "6 सप्ताह पहले" },
+  days30_ago: { en: "30 days ago", hi: "30 दिन पहले" },
+  today_label: { en: "Today", hi: "आज" },
+  no_checkin: { en: "No check-in", hi: "कोई चेक-इन नहीं" },
+  brighter: { en: "Brighter", hi: "उज्जवल" },
+  heavier: { en: "Heavier", hi: "भारी" },
+
   // registration: emergency contact + agreement
   emergency_contact: { en: "Emergency contact", hi: "आपातकालीन संपर्क" },
   ec_intro: { en: "Someone we can reach if we're ever concerned for your safety.", hi: "यदि हमें कभी आपकी सुरक्षा की चिंता हो तो हम किससे संपर्क करें।" },

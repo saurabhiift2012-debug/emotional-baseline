@@ -54,11 +54,26 @@ export default function Progress() {
 
         {/* Feel map */}
         <SectionTitle style={styles.section}>{t("feel_map")}</SectionTitle>
+        <AppText style={styles.caption}>{t("feel_map_caption")}</AppText>
         <Card>
           <View style={styles.feelMap}>
-            {(prog?.feel_map || []).map((d: any, i: number) => (
-              <View key={i} style={[styles.dot, { backgroundColor: d.group ? GROUP_COLOR[d.group] : "transparent", borderColor: d.group ? "transparent" : colors.border }]} />
-            ))}
+            {(prog?.feel_map || []).map((d: any, i: number) => {
+              const isToday = i === (prog?.feel_map?.length || 0) - 1;
+              return (
+                <View
+                  key={i}
+                  style={[
+                    styles.dot,
+                    { backgroundColor: d.group ? GROUP_COLOR[d.group] : "transparent", borderColor: d.group ? "transparent" : colors.border },
+                    isToday && { borderColor: colors.indigo, borderWidth: 2 },
+                  ]}
+                />
+              );
+            })}
+          </View>
+          <View style={styles.mapEnds}>
+            <AppText style={styles.mapEndText}>{t("weeks6_ago")}</AppText>
+            <AppText style={styles.mapEndText}>{t("today_label")}</AppText>
           </View>
           <View style={styles.legend}>
             {(["low", "neutral", "bright"] as const).map((g) => (
@@ -67,11 +82,16 @@ export default function Progress() {
                 <AppText style={styles.legendText}>{g === "low" ? "Low" : g === "neutral" ? "Steady" : "Bright"}</AppText>
               </View>
             ))}
+            <View style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: "transparent", borderWidth: 1, borderColor: colors.border }]} />
+              <AppText style={styles.legendText}>{t("no_checkin")}</AppText>
+            </View>
           </View>
         </Card>
 
         {/* Mood trend */}
         <SectionTitle style={styles.section}>{t("mood_trend")}</SectionTitle>
+        <AppText style={styles.caption}>{t("mood_trend_caption")}</AppText>
         <BarChart series={prog?.mood_series} max={6} color={colors.indigo} />
 
         {/* Story CTA */}
@@ -88,17 +108,30 @@ export default function Progress() {
 }
 
 function BarChart({ series, max, color }: { series?: any[]; max: number; color: string }) {
+  const { t } = useApp();
   const { colors } = useTheme();
   const styles = useThemedStyles(makeStyles);
   const data = series || [];
   return (
     <Card>
-      <View style={styles.chart}>
-        {data.map((d, i) => {
-          const v = d.value;
-          const h = v != null ? Math.max(4, (v / max) * 90) : 3;
-          return <View key={i} style={{ flex: 1, height: h, backgroundColor: v != null ? color : colors.border, borderRadius: 3, opacity: v != null ? 1 : 0.5 }} />;
-        })}
+      <View style={styles.chartRow}>
+        <View style={styles.axisCol}>
+          <AppText style={styles.axisText}>{t("brighter")}</AppText>
+          <AppText style={styles.axisText}>{t("heavier")}</AppText>
+        </View>
+        <View style={{ flex: 1 }}>
+          <View style={styles.chart}>
+            {data.map((d, i) => {
+              const v = d.value;
+              const h = v != null ? Math.max(4, (v / max) * 90) : 3;
+              return <View key={i} style={{ flex: 1, height: h, backgroundColor: v != null ? color : colors.border, borderRadius: 3, opacity: v != null ? 1 : 0.5 }} />;
+            })}
+          </View>
+          <View style={styles.chartLabels}>
+            <AppText style={styles.axisTime}>{t("days30_ago")}</AppText>
+            <AppText style={styles.axisTime}>{t("today_label")}</AppText>
+          </View>
+        </View>
       </View>
     </Card>
   );
@@ -108,6 +141,7 @@ const makeStyles = (colors: any) => StyleSheet.create({
   wrap: { paddingHorizontal: spacing.xl, paddingTop: spacing.md, paddingBottom: 100 },
   h: { fontSize: 28 },
   section: { marginTop: spacing.xl, fontSize: T.xl },
+  caption: { color: colors.onSurfaceSecondary, fontSize: T.sm, lineHeight: 19, marginBottom: spacing.md, marginTop: -spacing.sm },
   pulseGrid: { flexDirection: "row", flexWrap: "wrap" },
   pulseMoodRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm, marginBottom: spacing.sm },
   pulseMoodText: { fontSize: T.lg, color: colors.onSurface, fontWeight: "500" },
@@ -121,10 +155,17 @@ const makeStyles = (colors: any) => StyleSheet.create({
   bigNumLabel: { flex: 1, fontSize: T.lg, color: colors.onSurface },
   feelMap: { flexDirection: "row", flexWrap: "wrap", gap: 7 },
   dot: { width: 16, height: 16, borderRadius: 8, borderWidth: 1 },
-  legend: { flexDirection: "row", gap: spacing.lg, marginTop: spacing.lg },
+  mapEnds: { flexDirection: "row", justifyContent: "space-between", marginTop: spacing.md },
+  mapEndText: { fontSize: T.sm, color: colors.onSurfaceSecondary },
+  legend: { flexDirection: "row", flexWrap: "wrap", gap: spacing.lg, marginTop: spacing.lg },
   legendItem: { flexDirection: "row", alignItems: "center", gap: 6 },
   legendDot: { width: 12, height: 12, borderRadius: 6 },
   legendText: { fontSize: T.sm, color: colors.onSurfaceSecondary },
+  chartRow: { flexDirection: "row", alignItems: "stretch" },
+  axisCol: { width: 54, height: 96, justifyContent: "space-between", paddingRight: 8 },
+  axisText: { fontSize: T.sm, color: colors.onSurfaceSecondary, textAlign: "right" },
+  axisTime: { fontSize: T.sm, color: colors.onSurfaceSecondary },
+  chartLabels: { flexDirection: "row", justifyContent: "space-between", marginTop: spacing.sm },
   chart: { flexDirection: "row", alignItems: "flex-end", gap: 3, height: 96 },
   storyBtn: { flexDirection: "row", alignItems: "center", gap: spacing.md, backgroundColor: colors.indigo, borderRadius: radius.lg, padding: spacing.lg, marginTop: spacing.xl },
   storyBtnText: { flex: 1, color: colors.onSurfaceInverse, fontSize: T.lg, fontWeight: "600" },
