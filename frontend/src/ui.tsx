@@ -24,8 +24,8 @@ export function Display({ children, style }: { children: React.ReactNode; style?
   return <Text style={[{ fontFamily: font.display, color: colors.onSurface, fontSize: T["2xl"] }, style]}>{children}</Text>;
 }
 
-export function Card({ children, style, tint }: { children: React.ReactNode; style?: StyleProp<ViewStyle>; tint?: string }) {
-  return <View style={[styles.card, tint ? { backgroundColor: tint } : null, style]}>{children}</View>;
+export function Card({ children, style, tint, testID }: { children: React.ReactNode; style?: StyleProp<ViewStyle>; tint?: string; testID?: string }) {
+  return <View testID={testID} style={[styles.card, tint ? { backgroundColor: tint } : null, style]}>{children}</View>;
 }
 
 export function PrimaryButton({ label, onPress, disabled, testID, color, icon }: { label: string; onPress: () => void; disabled?: boolean; testID?: string; color?: string; icon?: any }) {
