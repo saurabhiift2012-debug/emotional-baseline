@@ -574,6 +574,20 @@ async def config():
             "small_steps": SMALL_STEPS, "consent_keys": CONSENT_KEYS}
 
 
+@api_router.get("/downloads/mood-clinical-review")
+async def download_mood_clinical_review():
+    """Public download of the per-mood clinical-review Word document."""
+    from fastapi.responses import FileResponse
+    path = "/app/TherapiShots_Mood_Clinical_Review.docx"
+    if not os.path.exists(path):
+        raise HTTPException(status_code=404, detail="Document not found")
+    return FileResponse(
+        path,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        filename="TherapiShots_Mood_Clinical_Review.docx",
+    )
+
+
 @api_router.post("/auth/register")
 async def register(body: RegisterIn):
     existing = await db.users.find_one({"email": body.email.lower()})
