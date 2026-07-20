@@ -1,5 +1,5 @@
-import React, { useEffect } from "react";
-import { View, Pressable, StyleSheet, Platform, useWindowDimensions } from "react-native";
+import React, { useEffect, useRef, useMemo } from "react";
+import { View, Pressable, StyleSheet, Platform, PanResponder, useWindowDimensions } from "react-native";
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, Easing } from "react-native-reanimated";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
@@ -67,11 +67,52 @@ export function GlassTabBar({ state, navigation }: BottomTabBarProps) {
 
   const lensStyle = useAnimatedStyle(() => ({ transform: [{ translateX: tx.value }] }));
 
+  // --- Drag the glass lens across tabs (in addition to tapping) ---
+  const minX = PILL_INSET;
+  const maxX = (n - 1) * itemW + PILL_INSET;
+  const dragIdxRef = useRef(state.index);
+
+  const navigateTo = (idx: number) => {
+    const route = state.routes[idx];
+    if (idx !== state.index) {
+      const event = navigation.emit({ type: "tabPress", target: route.key, canPreventDefault: true });
+      if (!event.defaultPrevented) navigation.navigate(route.name);
+    }
+  };
+  const onDragStart = () => { dragIdxRef.current = state.index; };
+  const onDragMove = (x: number) => {
+    const L = Math.max(minX, Math.min(maxX, x - lensW / 2));
+    tx.value = L;
+    const idx = Math.max(0, Math.min(n - 1, Math.round((L - PILL_INSET) / itemW)));
+    if (idx !== dragIdxRef.current) {
+      dragIdxRef.current = idx;
+      Haptics.selectionAsync();
+    }
+  };
+  const onDragEnd = () => {
+    const idx = dragIdxRef.current;
+    tx.value = withSpring(idx * itemW + PILL_INSET, SPRING);
+    navigateTo(idx);
+  };
+
+  // PanResponder: taps fall through to the Pressables (keeps tap + a11y);
+  // only a horizontal drag (>6px) claims the gesture and slides the lens.
+  const panResponder = useMemo(() => PanResponder.create({
+    onStartShouldSetPanResponder: () => false,
+    onStartShouldSetPanResponderCapture: () => false,
+    onMoveShouldSetPanResponder: (_e, g) => Math.abs(g.dx) > 6 && Math.abs(g.dx) > Math.abs(g.dy) * 1.1,
+    onMoveShouldSetPanResponderCapture: (_e, g) => Math.abs(g.dx) > 6 && Math.abs(g.dx) > Math.abs(g.dy) * 1.1,
+    onPanResponderGrant: onDragStart,
+    onPanResponderMove: (e) => onDragMove(e.nativeEvent.pageX - SIDE),
+    onPanResponderRelease: onDragEnd,
+    onPanResponderTerminate: onDragEnd,
+  }), [state.index, itemW, n, lensW, minX, maxX]);
+
   // Liquid Glass tint values
   const blurTint = Platform.OS === "ios"
     ? (dark ? "systemChromeMaterialDark" : "systemChromeMaterialLight")
     : (dark ? "dark" : "light");
-  const blurIntensity = Platform.OS === "ios" ? 60 : dark ? 55 : 75;
+  const blurIntensity = Platform.OS === "ios" ? 75 : dark ? 55 : 85;
 
   return (
     <View style={[styles.outer, { left: SIDE, right: SIDE, bottom: insets.bottom + 8 }]} testID="glass-tabbar" pointerEvents="box-none">
@@ -82,13 +123,13 @@ export function GlassTabBar({ state, navigation }: BottomTabBarProps) {
           experimentalBlurMethod={Platform.OS === "android" ? "dimezisBlurView" : undefined}
           style={StyleSheet.absoluteFill}
         />
-        {/* legibility wash — keeps text/icons readable over any background */}
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: dark ? "#15120D" : "#FFFFFF", opacity: dark ? 0.28 : 0.34, borderRadius: RADIUS }]} />
+        {/* legibility wash — keeps text/icons readable; kept light so the glass reads translucent, not white */}
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: dark ? "#15120D" : "#FFFFFF", opacity: dark ? 0.24 : 0.14, borderRadius: RADIUS }]} />
         {/* top specular highlight (edge sheen) */}
         <LinearGradient
           colors={dark
-            ? ["rgba(255,255,255,0.20)", "rgba(255,255,255,0.02)", "rgba(255,255,255,0.06)"]
-            : ["rgba(255,255,255,0.75)", "rgba(255,255,255,0.05)", "rgba(255,255,255,0.22)"]}
+            ? ["rgba(255,255,255,0.18)", "rgba(255,255,255,0.02)", "rgba(255,255,255,0.05)"]
+            : ["rgba(255,255,255,0.45)", "rgba(255,255,255,0.02)", "rgba(255,255,255,0.10)"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 0, y: 1 }}
           style={[StyleSheet.absoluteFill, { borderRadius: RADIUS }]}
@@ -116,7 +157,7 @@ export function GlassTabBar({ state, navigation }: BottomTabBarProps) {
           <View style={[StyleSheet.absoluteFill, { borderRadius: LENS_H / 2, borderWidth: 1, borderColor: dark ? "rgba(255,255,255,0.35)" : "rgba(255,255,255,0.9)" }]} />
         </Animated.View>
 
-        <View style={styles.row}>
+        <View style={styles.row} {...panResponder.panHandlers}>
           {state.routes.map((route, index) => {
             const focused = state.index === index;
             const color = focused ? colors.indigo : colors.onSurfaceSecondary;
