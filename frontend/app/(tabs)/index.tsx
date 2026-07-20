@@ -181,21 +181,8 @@ export default function Today() {
           </Card>
         ) : null}
 
-        {/* One small step */}
-        {step && (
-          <Card tint={colors.tintSage} style={{ marginTop: spacing.lg }}>
-            <View style={styles.obsHead}>
-              <Feather name={step.icon} size={16} color={colors.sage} />
-              <AppText style={[styles.obsHeadText, { color: colors.onSurfaceSecondary }]}>{t("one_small_step")}</AppText>
-            </View>
-            <Display style={{ fontSize: T.xl, marginBottom: 4 }}>{lang === "hi" ? step.hi : step.en}</Display>
-            <AppText style={{ color: colors.onSurfaceSecondary }}>{lang === "hi" ? step.hi_desc : step.en_desc}</AppText>
-          </Card>
-        )}
-
         <View style={{ height: spacing.xl }} />
       </ScrollView>
-      <CrisisSheet visible={crisis} onClose={() => setCrisis(false)} />
     </Screen>
   );
 }
@@ -254,6 +241,11 @@ const makeStyles = (colors: any) => StyleSheet.create({
   talkBody: { color: colors.onSurfaceSecondary, fontSize: T.base, lineHeight: 22, marginBottom: spacing.lg },
   talkBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.sm, backgroundColor: colors.indigo, borderRadius: radius.pill, height: 50 },
   talkBtnText: { color: colors.onSurfaceInverse, fontWeight: "600", fontSize: T.lg },
+  screenQ: { color: colors.onSurface, fontSize: T.base, fontWeight: "500", lineHeight: 22 },
+  screenBtn: { flex: 1, height: 46, borderRadius: radius.pill, alignItems: "center", justifyContent: "center", backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  screenBtnText: { color: colors.onSurface, fontWeight: "600", fontSize: T.base },
+  gentleLink: { flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start" },
+  gentleLinkText: { color: colors.indigo, fontWeight: "600", fontSize: T.base },
   bannerRow: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   bannerQ: { fontSize: 22, lineHeight: 28 },
   bannerCta: { width: 48, height: 48, borderRadius: 24, backgroundColor: colors.amber, alignItems: "center", justifyContent: "center" },

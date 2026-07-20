@@ -18,6 +18,7 @@ export default function Progress() {
   const [prog, setProg] = useState<any>(null);
   const [pulse, setPulse] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [showTrend, setShowTrend] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -89,10 +90,22 @@ export default function Progress() {
           </View>
         </Card>
 
-        {/* Mood trend */}
-        <SectionTitle style={styles.section}>{t("mood_trend")}</SectionTitle>
-        <AppText style={styles.caption}>{t("mood_trend_caption")}</AppText>
-        <BarChart series={prog?.mood_series} max={6} color={colors.indigo} />
+        {/* Mood trend — hidden behind a "More" toggle so Feel Map stays the primary view */}
+        <Pressable
+          testID="mood-trend-toggle"
+          onPress={() => setShowTrend((s) => !s)}
+          style={styles.moreToggle}
+        >
+          <Feather name={showTrend ? "chevron-up" : "chevron-down"} size={18} color={colors.indigo} />
+          <AppText style={styles.moreToggleText}>{showTrend ? t("hide_detail") : t("show_more_detail")}</AppText>
+        </Pressable>
+        {showTrend ? (
+          <>
+            <SectionTitle style={styles.section}>{t("mood_trend")}</SectionTitle>
+            <AppText style={styles.caption}>{t("mood_trend_caption")}</AppText>
+            <BarChart series={prog?.mood_series} max={6} color={colors.indigo} />
+          </>
+        ) : null}
 
         {/* Story CTA */}
         <Pressable testID="read-story-button" onPress={() => router.push("/story")} style={styles.storyBtn}>
@@ -168,5 +181,7 @@ const makeStyles = (colors: any) => StyleSheet.create({
   chartLabels: { flexDirection: "row", justifyContent: "space-between", marginTop: spacing.sm },
   chart: { flexDirection: "row", alignItems: "flex-end", gap: 3, height: 96 },
   storyBtn: { flexDirection: "row", alignItems: "center", gap: spacing.md, backgroundColor: colors.indigo, borderRadius: radius.lg, padding: spacing.lg, marginTop: spacing.xl },
+  moreToggle: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, marginTop: spacing.xl, height: 44 },
+  moreToggleText: { color: colors.indigo, fontWeight: "600", fontSize: T.base },
   storyBtnText: { flex: 1, color: colors.onSurfaceInverse, fontSize: T.lg, fontWeight: "600" },
 });

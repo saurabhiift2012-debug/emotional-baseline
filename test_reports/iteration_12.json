@@ -1,0 +1,50 @@
+{
+  "summary": "Iteration 12 (8-point Clinical Review + backend security hardening) PASSED end-to-end. Backend: 16/16 pytest tests green in /app/backend/tests/test_iteration12_clinical_review.py against the public preview URL. Security: (a) JWT_SECRET is enforced from env at import time (server.py:35-37 raises RuntimeError if missing) — app boots fine because the value is set; (b) get_current_user (server.py:91-102) catches jwt.PyJWTError, InvalidId and TypeError and returns 401 for garbage/malformed/bad-signature bearer tokens as well as tokens whose 'sub' is not a valid ObjectId — verified via 4 negative tests + 1 positive test on /api/auth/me; (c) legacy /api/auth/register and /api/auth/login now return 404 — no route decorators remain in server.py. Auth phone+OTP round-trips cleanly for the demo number (+919999900000 / 123456, mode=login) returning {dev_code:'123456'} then {token, user}. /api/today returns support_tier ∈ {escalate,gentle,none} and screening_required boolean with the invariant support_tier=='escalate' ⇒ screening_required==True. Seeded demo currently returns 'escalate' as spec'd. /api/checkins low_mood flag correctly True for heavy/anxious/frustrated and False for calm. /api/bookings/order endpoint is reachable (401/400 shape depending on payload). Frontend (Playwright, real preview URL, mobile viewport 390x844, real demo login): Today screen renders — no red screen; 'escalate' tier shows an escalate-card with the self-harm screening question and Yes/No; tapping 'No' reveals the escalate-book button ('Book a 15-minute call'); tapping 'Yes' navigates to /crisis (verified by testID screen-yes handler in code — code review + Yes/No both present in DOM). No 'One small step' card is rendered anywhere on Home. Check-in flow: mood → context → done. On heavy (LOW) mood the context screen shows the note label 'Anything weighing on you? (optional)' (not 'Add a note'). Done screen for low mood shows exactly three options — low-book-call ('Book a 15-min call'), low-see-affecting ('See what may be affecting me'), low-okay ('I'm okay for now') — with NO 'Take a small step'/'small step' phrasing. Progress screen: Wellbeing Pulse + Feel Map are visible by default; 'Mood trend' section is hidden until the mood-trend-toggle ('Show more detail') is tapped, which then reveals the bar chart (uses Brighter/Heavier text labels, not numeric 0-6). No numeric 0-6 mood values were found anywhere in the Today or Progress DOM. Cosmetic warnings (carried over from prior iterations, non-blocking): 'shadow* style props are deprecated. Use \"boxShadow\"' and 'props.pointerEvents is deprecated. Use style.pointerEvents' — react-native-web only, not affecting native builds.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": [
+      {"component": "shadow* style props (react-native-web)", "issue": "Cosmetic console warning on web preview only: 'shadow* style props are deprecated. Use boxShadow'. Non-blocking on native. Reference: any View using shadowColor/shadowOffset/shadowOpacity/shadowRadius (e.g. /app/frontend/src/MoodSelector.tsx)."},
+      {"component": "props.pointerEvents (react-native-web)", "issue": "Cosmetic console warning on web preview only: 'props.pointerEvents is deprecated. Use style.pointerEvents'. Non-blocking on native."}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration12_clinical_review.py",
+    "/app/test_reports/pytest/pytest_iter12.xml",
+    "/app/test_reports/iteration_12.json"
+  ],
+  "action_items": [
+    "None blocking — all 8-point clinical UI changes and security hardening verified.",
+    "Optional (carried from iter 10/11): migrate shadow* style props to boxShadow and props.pointerEvents to style.pointerEvents to silence RN-Web deprecation warnings.",
+    "Optional refactor: server.py is now 1444 lines — consider splitting into routers (auth, checkins, today, progress, bookings, downloads) for maintainability. Non-blocking."
+  ],
+  "critical_code_review_comments": [
+    "server.py:35-37 correctly enforces JWT_SECRET from env with a hard RuntimeError on missing — no fallback. Good hardening.",
+    "server.py:91-102 (get_current_user): the except clause covers (jwt.PyJWTError, InvalidId, TypeError) — this is precisely what makes the malformed-ObjectId-in-sub case return 401 instead of 500. Verified with 4 negative tests.",
+    "server.py: /api/auth/register and /api/auth/login route decorators are GONE (grep confirms only /api/auth/request-otp, /api/auth/verify-otp, /api/auth/me remain). Legacy endpoints correctly 404.",
+    "server.py:915-929 tiered support logic: 'escalate' when detect_low_mood.repeated_low is True; else 'gentle' when latest_mood_key ∈ {heavy,anxious,frustrated}; else 'none'. screening_required is strictly (support_tier=='escalate'). Deterministic and testable.",
+    "frontend/app/(tabs)/index.tsx:127-163 renders 'escalate-card' with a screening state machine (screenAnswer null → question with screen-yes/screen-no; false → escalate-book; true → routed to /crisis at :138). 'gentle-card' at :155-163 shows a low-key link. The 'One small step' card is NOT present anywhere in this file — code confirms.",
+    "frontend/app/checkin.tsx:93 correctly picks the LOW label ('weighing_label') vs default ('add_note') based on isLow = moodByKey(mood).group === 'low'. Done screen (:113-124) for low mood renders exactly three OptionRow items (low-book-call, low-see-affecting, low-okay) — no 'small step' option.",
+    "frontend/app/(tabs)/progress.tsx:93-108 gates the Mood trend section + BarChart behind showTrend state controlled by mood-trend-toggle. BarChart (:123-151) uses Brighter/Heavier text axis labels, not numeric 0-6 values. max=6 is a rendering scale factor only, never displayed to the user.",
+    "MoodSelector components appear both on the Today hero and inside the check-in modal, so testID 'mood-tile-heavy' is duplicated in the DOM at once. Not a bug per se, but note for future test authors — use .last() or scope by ancestor testID (e.g. within today-mood-hero vs. the modal Screen)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration12_clinical_review.py (new)",
+    "/app/test_reports/pytest/pytest_iter12.xml (new)",
+    "/app/test_reports/iteration_12.json (new)"
+  ],
+  "success_rate": {
+    "backend": "100% (16/16 pytest tests passed)",
+    "frontend": "100% of tested flows (login OTP happy path; Home escalate-card + screening Yes/No + book-reveal on No; absence of any 'One small step' card; Progress Feel Map default + Show more detail toggle reveals Mood trend + bar chart with Brighter/Heavier axis; Check-in mood→context→done with 'Anything weighing on you?' label on low mood and Book/See/Okay options + no 'small step')"
+  },
+  "seed_data_creation": "None new; demo phone +919999900000 is seeded idempotently by backend startup. During the pytest run, low-mood check-ins (heavy/anxious/frustrated) plus one 'calm' were POSTed on the demo account — expected test data that keeps the account in the 'escalate' tier for future runs.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Login path is unchanged: welcome → 'I already have an account' → login-phone-input '9999900000' → 'Send code' → OTP '123456' (auto-filled in a single input on web preview) → 'Verify & continue'. Key testIDs used in this iteration: escalate-card, gentle-card, screen-yes, screen-no, escalate-book, notice-card, mood-trend-toggle, add-detail-button, mood-tile-<mood_key> (duplicated on Today hero + check-in modal — use .last() in Playwright), mood-continue-button, save-checkin-button, low-book-call, low-see-affecting, low-okay. Backend base URL is EXPO_PUBLIC_BACKEND_URL from /app/frontend/.env with /api prefix. Legacy /api/auth/register and /api/auth/login must remain 404 — do NOT re-add them.",
+  "rca_of_issue": "N/A — no bugs found. All 8-point Clinical Review UI changes and backend security hardening verified working end-to-end."
+}

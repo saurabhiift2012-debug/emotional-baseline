@@ -15,14 +15,14 @@ from datetime import datetime, date, timezone, timedelta
 from typing import List, Optional, Annotated, Any
 
 import jwt
-import bcrypt
 import numpy as np
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
-from pydantic import BaseModel, Field, EmailStr, BeforeValidator, field_validator
+from pydantic import BaseModel, BeforeValidator
 from bson import ObjectId
+from bson.errors import InvalidId
 from dotenv import load_dotenv
 
 ROOT_DIR = Path(__file__).parent
@@ -32,7 +32,9 @@ mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
-SECRET_KEY = os.environ.get('JWT_SECRET', 'therapishots-dev-secret-change-in-prod')
+SECRET_KEY = os.environ.get('JWT_SECRET')
+if not SECRET_KEY:
+    raise RuntimeError("JWT_SECRET environment variable is required and must be set.")
 ALGORITHM = 'HS256'
 ACCESS_TOKEN_EXPIRE_DAYS = 30
 
@@ -78,17 +80,6 @@ security = HTTPBearer(auto_error=True)
 PyObjectId = Annotated[str, BeforeValidator(str)]
 
 
-def hash_password(pw: str) -> str:
-    return bcrypt.hashpw(pw.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-
-
-def verify_password(pw: str, hashed: str) -> bool:
-    try:
-        return bcrypt.checkpw(pw.encode('utf-8'), hashed.encode('utf-8'))
-    except Exception:
-        return False
-
-
 def create_token(user_id: str) -> str:
     payload = {
         'sub': user_id,
@@ -101,9 +92,10 @@ async def get_current_user(creds: HTTPAuthorizationCredentials = Depends(securit
     try:
         payload = jwt.decode(creds.credentials, SECRET_KEY, algorithms=[ALGORITHM])
         user_id = payload.get('sub')
-    except jwt.PyJWTError:
+        oid = ObjectId(user_id)
+    except (jwt.PyJWTError, InvalidId, TypeError):
         raise HTTPException(status_code=401, detail="Invalid or expired token")
-    user = await db.users.find_one({"_id": ObjectId(user_id)})
+    user = await db.users.find_one({"_id": oid})
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
     user['id'] = str(user['_id'])
@@ -156,39 +148,6 @@ CONSENT_KEYS = ["mood_history", "health_data", "sleep_data", "activity_data",
 # ----------------------------------------------------------------------------
 # Pydantic models
 # ----------------------------------------------------------------------------
-class RegisterIn(BaseModel):
-    email: EmailStr
-    password: str
-    name: str
-    date_of_birth: str  # YYYY-MM-DD
-    language: str = "en"
-
-    @field_validator('password')
-    @classmethod
-    def pw_len(cls, v):
-        if len(v) < 6:
-            raise ValueError('Password must be at least 6 characters')
-        return v
-
-    @field_validator('date_of_birth')
-    @classmethod
-    def check_18(cls, v):
-        try:
-            dob = datetime.strptime(v, "%Y-%m-%d").date()
-        except ValueError:
-            raise ValueError('Date of birth must be YYYY-MM-DD')
-        today = date.today()
-        age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
-        if age < 18:
-            raise ValueError('You must be 18 or older to use TherapiShots.')
-        return v
-
-
-class LoginIn(BaseModel):
-    email: EmailStr
-    password: str
-
-
 class CheckinIn(BaseModel):
     mood: str
     context: List[str] = []
@@ -600,42 +559,6 @@ async def download_mood_clinical_review():
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         filename="TherapiShots_Mood_Clinical_Review.docx",
     )
-
-
-@api_router.post("/auth/register")
-async def register(body: RegisterIn):
-    existing = await db.users.find_one({"email": body.email.lower()})
-    if existing:
-        raise HTTPException(status_code=400, detail="This email is already registered.")
-    # Core first-party features on; AI + third-party sharing off (privacy-first)
-    on_by_default = {"mood_history", "health_data", "sleep_data", "activity_data",
-                     "heart_data", "personal_insights"}
-    default_consents = {k: (k in on_by_default) for k in CONSENT_KEYS}
-    doc = {
-        "email": body.email.lower(),
-        "name": body.name.strip() or "there",
-        "password": hash_password(body.password),
-        "date_of_birth": body.date_of_birth,
-        "language": body.language,
-        "consents": default_consents,
-        "consent_version": 1,
-        "health_connected": {"sleep": True, "activity": True, "steps": True, "heart": True},
-        "created_at": datetime.now(timezone.utc).isoformat(),
-    }
-    res = await db.users.insert_one(doc)
-    uid = str(res.inserted_id)
-    await seed_history(uid)
-    token = create_token(uid)
-    return {"token": token, "user": _public_user({**doc, "_id": res.inserted_id})}
-
-
-@api_router.post("/auth/login")
-async def login(body: LoginIn):
-    user = await db.users.find_one({"email": body.email.lower()})
-    if not user or not verify_password(body.password, user['password']):
-        raise HTTPException(status_code=401, detail="Incorrect email or password.")
-    token = create_token(str(user['_id']))
-    return {"token": token, "user": _public_user(user)}
 
 
 def _public_user(u: dict) -> dict:

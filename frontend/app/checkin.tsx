@@ -8,7 +8,7 @@ import * as Haptics from "expo-haptics";
 import { useApp } from "@/src/AppContext";
 import { api } from "@/src/api";
 import { MoodSelector } from "@/src/MoodSelector";
-import { CONTEXT_TAGS } from "@/src/moods";
+import { CONTEXT_TAGS, moodByKey } from "@/src/moods";
 import { Screen, Display, AppText, PrimaryButton, GhostButton, IconChip, spacing, radius, font, T, useTheme, useThemedStyles } from "@/src/ui";
 
 type Step = "mood" | "context" | "done";
@@ -28,6 +28,8 @@ export default function CheckIn() {
 
   const toggleCtx = (tag: string) =>
     setCtx((prev) => (prev.includes(tag) ? prev.filter((c) => c !== tag) : [...prev, tag]));
+
+  const isLow = moodByKey(mood, moods)?.group === "low";
 
   const save = async () => {
     if (!mood) return;
@@ -88,13 +90,13 @@ export default function CheckIn() {
               />
             ))}
           </View>
-          <AppText style={[styles.sub, { marginTop: spacing.xl }]}>{t("add_note")}</AppText>
+          <AppText style={[styles.sub, { marginTop: spacing.xl }]}>{isLow ? t("weighing_label") : t("add_note")}</AppText>
           <TextInput
             testID="checkin-note-input"
-            style={styles.note}
+            style={[styles.note, isLow && styles.noteSingle]}
             value={note}
             onChangeText={setNote}
-            multiline
+            multiline={!isLow}
             placeholder="…"
             placeholderTextColor={colors.onSurfaceSecondary}
           />
@@ -113,7 +115,6 @@ export default function CheckIn() {
               <AppText style={[styles.sub, { textAlign: "center", marginBottom: spacing.lg }]}>{t("helpful_now")}</AppText>
               <OptionRow icon="phone-call" label={t("book_15_call")} onPress={() => closeThen("/psychologists")} testID="low-book-call" />
               <OptionRow icon="compass" label={t("see_affecting")} onPress={() => closeThen("/(tabs)/insights")} testID="low-see-affecting" />
-              <OptionRow icon="wind" label={t("take_step")} onPress={() => closeThen("/(tabs)/support")} testID="low-take-step" />
               <OptionRow icon="check-circle" label={t("im_okay")} onPress={close} testID="low-okay" />
             </View>
           ) : (
@@ -166,6 +167,7 @@ const makeStyles = (colors: any) => StyleSheet.create({
     padding: spacing.lg, fontFamily: font.body, fontSize: T.lg, color: colors.onSurface,
     borderWidth: 1, borderColor: colors.border, marginTop: spacing.md, textAlignVertical: "top",
   },
+  noteSingle: { minHeight: 0, height: 52, textAlignVertical: "center" },
   footer: { paddingHorizontal: spacing.xl, paddingBottom: spacing.xl, paddingTop: spacing.sm, gap: spacing.xs },
   doneIcon: { alignSelf: "center", width: 66, height: 66, borderRadius: 33, backgroundColor: colors.sage, alignItems: "center", justifyContent: "center", marginTop: spacing["2xl"], marginBottom: spacing.lg },
   optRow: { flexDirection: "row", alignItems: "center", backgroundColor: colors.surfaceSecondary, borderRadius: radius.md, padding: spacing.lg, marginBottom: spacing.md },
