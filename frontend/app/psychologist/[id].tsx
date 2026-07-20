@@ -5,6 +5,8 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useApp } from "@/src/AppContext";
 import { api } from "@/src/api";
+import { profileFor, availabilitySignal } from "@/src/psychologistProfiles";
+import { PsychologistAvatar } from "@/src/PsychologistAvatar";
 import { Screen, Display, AppText, Card, Loading, PrimaryButton, spacing, radius, T, useTheme, useThemedStyles } from "@/src/ui";
 import { RazorpayCheckout, RzpOrder, RzpSuccess } from "@/src/RazorpayCheckout";
 
@@ -61,17 +63,26 @@ export default function PsychologistDetail() {
   if (!p) return <Screen><View style={styles.header}><Pressable onPress={() => router.back()}><Feather name="arrow-left" size={22} color={colors.onSurface} /></Pressable></View></Screen>;
 
   const selectedPrice = priceFor(sessionType);
+  const prof = profileFor(p.slug);
+  const bio = prof.bio || p.bio;
+  const avail = availabilitySignal(p.availability, t);
+  const sessionTypes = (p.session_types || []).filter((s: string) => s !== "Chat");
+  const firstName = (p.name || "").replace(/^(Dr\.?|Ms\.?|Mr\.?|Mrs\.?)\s+/i, "").split(/\s+/)[0];
 
   if (confirmed) {
+    const prof = profileFor(confirmed.slug || p?.slug);
     return (
       <Screen>
         <ScrollView contentContainerStyle={styles.confirmWrap}>
-          <View style={styles.confirmIcon}><Feather name="check" size={34} color={colors.surface} /></View>
-          <Display style={styles.confirmTitle}>{t("booking_confirmed")}</Display>
-          <Card style={{ marginTop: spacing.xl, width: "100%" }}>
-            <AppText style={styles.cName}>{confirmed.psychologist_name}</AppText>
+          <PsychologistAvatar photo={prof.photo} size={88} />
+          <Display style={styles.confirmTitle}>
+            {confirmed.psychologist_name} {t("will_call_you_at")} {confirmed.slot_label}
+          </Display>
+          <AppText style={styles.confirmSub}>{t("call_confirm_sub")}</AppText>
+          <Card tint={colors.tintWarm} style={{ marginTop: spacing.xl, width: "100%" }}>
+            {prof.credential ? <AppText style={styles.confCredential}>{prof.credential}</AppText> : null}
+            <Row icon="phone-call" text={confirmed.session_type} />
             <Row icon="clock" text={confirmed.slot_label} />
-            <Row icon="video" text={confirmed.session_type} />
             <Row icon="credit-card" text={`₹${confirmed.price} · ${t("paid_via")}`} />
           </Card>
           <View style={{ height: spacing.lg }} />
@@ -90,16 +101,24 @@ export default function PsychologistDetail() {
         </Pressable>
       </View>
       <ScrollView contentContainerStyle={styles.wrap} showsVerticalScrollIndicator={false}>
-        <View style={styles.top}>
-          <View style={styles.avatar}><Feather name="user" size={28} color={colors.indigo} /></View>
+        {/* Warm, personal hero — a real person, not an automated screen */}
+        <View style={styles.hero}>
+          <PsychologistAvatar photo={prof.photo} size={96} />
           <View style={styles.nameRow}>
             <Display style={styles.name}>{p.name}</Display>
             {p.verified ? <View style={styles.verified}><Feather name="check" size={11} color={colors.surface} /><AppText style={styles.verifiedText}>{t("verified")}</AppText></View> : null}
           </View>
-          <AppText style={styles.qual}>{p.qualifications} · {p.experience_years} {t("years_exp")}</AppText>
+          {prof.credential ? <AppText style={styles.credential}>{prof.credential}</AppText> : null}
+          {bio ? <AppText style={styles.bio}>{bio}</AppText> : null}
+          {prof.licence ? <AppText style={styles.licence}>{prof.licence}</AppText> : null}
+          <View style={styles.availPill}>
+            <Feather name="clock" size={13} color={colors.indigo} />
+            <AppText style={styles.availPillText}>{avail.text}</AppText>
+          </View>
         </View>
 
-        <AppText style={styles.bio}>{p.bio}</AppText>
+        <Display style={styles.speakWith}>{t("speak_with")} {firstName}</Display>
+        <AppText style={styles.talkThrough}>{t("talk_it_through")}</AppText>
 
         <AppText style={styles.sectionLabel}>{t("specializes_in")}</AppText>
         <AppText style={styles.value}>{p.specializations.join(" · ")}</AppText>
@@ -109,7 +128,7 @@ export default function PsychologistDetail() {
         {/* Session type */}
         <AppText style={styles.sectionLabel}>{t("session_type_label")}</AppText>
         <View style={styles.chipRow}>
-          {p.session_types.map((s: string) => (
+          {sessionTypes.map((s: string) => (
             <Pressable key={s} testID={`session-type-${s}`} onPress={() => { Haptics.selectionAsync(); setSessionType(s); }} style={[styles.chip, sessionType === s && styles.chipActive]}>
               <AppText style={[styles.chipText, sessionType === s && styles.chipTextActive]}>{s} · ₹{priceFor(s)}</AppText>
             </Pressable>
@@ -131,7 +150,8 @@ export default function PsychologistDetail() {
         <View style={{ height: spacing.md }} />
         <PrimaryButton
           testID="confirm-pay-button"
-          label={`${t("pay_now")} · ₹${selectedPrice}`}
+          icon="phone-call"
+          label={`${t("book_15_min_call")} · ₹${selectedPrice}`}
           disabled={!slot || !sessionType || booking}
           onPress={startPayment}
         />
@@ -161,14 +181,18 @@ function Row({ icon, text }: { icon: any; text: string }) {
 const makeStyles = (colors: any) => StyleSheet.create({
   header: { paddingHorizontal: spacing.xl, paddingTop: spacing.sm, height: 40, justifyContent: "center" },
   wrap: { paddingHorizontal: spacing.xl, paddingTop: spacing.md },
-  top: { alignItems: "center" },
-  avatar: { width: 64, height: 64, borderRadius: 32, backgroundColor: colors.surfaceSecondary, alignItems: "center", justifyContent: "center", marginBottom: spacing.md },
-  nameRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  hero: { alignItems: "center", backgroundColor: colors.tintWarm, borderRadius: radius.lg, padding: spacing.xl, paddingTop: spacing.lg },
+  nameRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm, marginTop: spacing.md },
   name: { fontSize: 24 },
   verified: { flexDirection: "row", alignItems: "center", gap: 3, backgroundColor: colors.sage, borderRadius: radius.pill, paddingHorizontal: 8, paddingVertical: 3 },
   verifiedText: { fontSize: 10, color: colors.surface, fontWeight: "600" },
-  qual: { fontSize: T.sm, color: colors.onSurfaceSecondary, marginTop: 4 },
-  bio: { fontSize: T.lg, lineHeight: 24, color: colors.onSurface, marginTop: spacing.xl, textAlign: "center" },
+  credential: { fontSize: T.base, color: colors.indigo, fontWeight: "700", marginTop: 4 },
+  bio: { fontSize: T.lg, lineHeight: 24, color: colors.onSurface, marginTop: spacing.sm, textAlign: "center" },
+  licence: { fontSize: 12, color: colors.onSurfaceSecondary, fontStyle: "italic", marginTop: spacing.sm, textAlign: "center" },
+  availPill: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: colors.surface, borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: 7, marginTop: spacing.lg },
+  availPillText: { fontSize: T.sm, color: colors.onSurface, fontWeight: "600" },
+  speakWith: { fontSize: 22, marginTop: spacing.xl },
+  talkThrough: { fontSize: T.base, color: colors.onSurfaceSecondary, marginTop: 4 },
   sectionLabel: { fontSize: T.sm, color: colors.onSurfaceSecondary, textTransform: "uppercase", letterSpacing: 1, marginTop: spacing.xl, marginBottom: spacing.xs },
   value: { fontSize: T.lg, color: colors.onSurface },
   chipRow: { flexDirection: "row", gap: spacing.sm, flexWrap: "wrap" },
@@ -184,9 +208,9 @@ const makeStyles = (colors: any) => StyleSheet.create({
   mockNote: { fontSize: T.sm, color: colors.onSurfaceSecondary, fontStyle: "italic", marginTop: spacing.lg },
   err: { color: colors.rose, marginTop: spacing.md },
   confirmWrap: { paddingHorizontal: spacing.xl, paddingTop: spacing["3xl"], alignItems: "center" },
-  confirmIcon: { width: 72, height: 72, borderRadius: 36, backgroundColor: colors.sage, alignItems: "center", justifyContent: "center", marginBottom: spacing.lg },
-  confirmTitle: { fontSize: 26, textAlign: "center" },
-  cName: { fontSize: T.xl, fontWeight: "600", color: colors.onSurface, marginBottom: spacing.md },
+  confirmTitle: { fontSize: 24, textAlign: "center", marginTop: spacing.lg, lineHeight: 32 },
+  confirmSub: { fontSize: T.base, color: colors.onSurfaceSecondary, textAlign: "center", marginTop: spacing.sm, lineHeight: 22 },
+  confCredential: { fontSize: T.sm, color: colors.indigo, fontWeight: "700", marginBottom: spacing.sm },
   confRow: { flexDirection: "row", alignItems: "center", gap: spacing.md, paddingVertical: 6 },
   confRowText: { fontSize: T.base, color: colors.onSurface },
   closeBtn: { height: 48, alignItems: "center", justifyContent: "center", marginTop: spacing.sm },

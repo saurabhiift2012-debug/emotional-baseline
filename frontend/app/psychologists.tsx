@@ -4,6 +4,8 @@ import { useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { useApp } from "@/src/AppContext";
 import { api } from "@/src/api";
+import { profileFor } from "@/src/psychologistProfiles";
+import { PsychologistAvatar } from "@/src/PsychologistAvatar";
 import { Screen, Display, AppText, Card, Loading, IconChip, spacing, radius, T, useTheme, useThemedStyles } from "@/src/ui";
 
 const LANGS = ["", "English", "Hindi"];
@@ -36,6 +38,7 @@ export default function Psychologists() {
           <Feather name="arrow-left" size={22} color={colors.onSurface} />
         </Pressable>
         <Display style={styles.title}>{t("psychologists_title")}</Display>
+        <AppText style={styles.intro}>{t("matched_intro")}</AppText>
       </View>
 
       <View style={styles.filterRow}>
@@ -46,30 +49,43 @@ export default function Psychologists() {
 
       {loading ? <Loading /> : (
         <ScrollView contentContainerStyle={styles.wrap} showsVerticalScrollIndicator={false}>
-          {list.map((p) => (
-            <Pressable key={p.id} testID={`psy-card-${p.id}`} onPress={() => router.push(`/psychologist/${p.id}`)}>
-              <Card style={{ marginBottom: spacing.md }}>
-                <View style={styles.cardTop}>
-                  <View style={styles.avatar}><Feather name="user" size={22} color={colors.indigo} /></View>
-                  <View style={{ flex: 1 }}>
-                    <View style={styles.nameRow}>
-                      <AppText style={styles.name}>{p.name}</AppText>
-                      {p.verified ? (
-                        <View style={styles.verified}><Feather name="check" size={11} color={colors.surface} /><AppText style={styles.verifiedText}>{t("verified")}</AppText></View>
-                      ) : null}
+          {list.map((p) => {
+            const prof = profileFor(p.slug);
+            const bio = prof.bio || p.bio;
+            return (
+              <Pressable key={p.id} testID={`psy-card-${p.id}`} onPress={() => router.push(`/psychologist/${p.id}`)}>
+                <Card tint={colors.tintWarm} style={{ marginBottom: spacing.md }}>
+                  <View style={styles.cardTop}>
+                    <PsychologistAvatar photo={prof.photo} size={56} />
+                    <View style={{ flex: 1 }}>
+                      <View style={styles.nameRow}>
+                        <AppText style={styles.name}>{p.name}</AppText>
+                        {p.verified ? (
+                          <View style={styles.verified}><Feather name="check" size={11} color={colors.surface} /><AppText style={styles.verifiedText}>{t("verified")}</AppText></View>
+                        ) : null}
+                      </View>
+                      {prof.credential ? <AppText style={styles.credential}>{prof.credential}</AppText> : null}
+                      {bio ? <AppText style={styles.bioLine} numberOfLines={2}>{bio}</AppText> : null}
                     </View>
-                    <AppText style={styles.qual}>{p.qualifications} · {p.experience_years} {t("years_exp")}</AppText>
                   </View>
-                </View>
-                <AppText style={styles.specs}>{p.specializations.join(" · ")}</AppText>
-                <View style={styles.cardBottom}>
-                  <AppText style={styles.langs}>{p.languages.join(", ")}</AppText>
-                  <AppText style={styles.price}>₹{p.price} <AppText style={styles.priceSub}>{t("per_session")}</AppText></AppText>
-                </View>
-              </Card>
-            </Pressable>
-          ))}
-          <AppText style={styles.note}>{t("test_data_note")}</AppText>
+                  {prof.licence ? <AppText style={styles.licence}>{prof.licence}</AppText> : null}
+                  <AppText style={styles.specs}>{p.specializations.join(" · ")}</AppText>
+                  <View style={styles.cardBottom}>
+                    <View style={styles.availRow}>
+                      <Feather name="clock" size={13} color={colors.sage} />
+                      <AppText style={styles.availText}>{t("usually_within_hours")}</AppText>
+                    </View>
+                    <AppText style={styles.price}>₹{p.short_call_price ?? p.price} <AppText style={styles.priceSub}>{t("per_session")}</AppText></AppText>
+                  </View>
+                  <View style={styles.ctaRow}>
+                    <Feather name="phone-call" size={14} color={colors.indigo} />
+                    <AppText style={styles.ctaText}>{t("book_15_min_call")}</AppText>
+                    <Feather name="chevron-right" size={16} color={colors.indigo} />
+                  </View>
+                </Card>
+              </Pressable>
+            );
+          })}
           <View style={{ height: spacing.xl }} />
         </ScrollView>
       )}
@@ -80,19 +96,23 @@ export default function Psychologists() {
 const makeStyles = (colors: any) => StyleSheet.create({
   header: { paddingHorizontal: spacing.xl, paddingTop: spacing.sm, gap: spacing.sm },
   title: { fontSize: 26 },
+  intro: { fontSize: T.base, color: colors.onSurfaceSecondary, lineHeight: 21 },
   filterRow: { flexDirection: "row", gap: spacing.sm, paddingHorizontal: spacing.xl, paddingVertical: spacing.md },
   wrap: { paddingHorizontal: spacing.xl, paddingTop: spacing.xs },
   cardTop: { flexDirection: "row", alignItems: "center", gap: spacing.md },
-  avatar: { width: 46, height: 46, borderRadius: 23, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" },
   nameRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
-  name: { fontSize: T.lg, fontWeight: "600", color: colors.onSurface },
+  name: { fontSize: T.lg, fontWeight: "700", color: colors.onSurface },
   verified: { flexDirection: "row", alignItems: "center", gap: 3, backgroundColor: colors.sage, borderRadius: radius.pill, paddingHorizontal: 8, paddingVertical: 2 },
   verifiedText: { fontSize: 10, color: colors.surface, fontWeight: "600" },
-  qual: { fontSize: T.sm, color: colors.onSurfaceSecondary, marginTop: 2 },
-  specs: { fontSize: T.base, color: colors.indigo, marginTop: spacing.md },
+  credential: { fontSize: T.sm, color: colors.indigo, fontWeight: "600", marginTop: 2 },
+  bioLine: { fontSize: T.sm, color: colors.onSurface, lineHeight: 19, marginTop: 3 },
+  licence: { fontSize: 11, color: colors.onSurfaceSecondary, fontStyle: "italic", marginTop: spacing.sm },
+  specs: { fontSize: T.base, color: colors.onSurfaceSecondary, marginTop: spacing.sm },
   cardBottom: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: spacing.md },
-  langs: { fontSize: T.sm, color: colors.onSurfaceSecondary },
-  price: { fontSize: T.lg, fontWeight: "600", color: colors.onSurface },
+  availRow: { flexDirection: "row", alignItems: "center", gap: 5 },
+  availText: { fontSize: T.sm, color: colors.sage, fontWeight: "600" },
+  price: { fontSize: T.lg, fontWeight: "700", color: colors.onSurface },
   priceSub: { fontSize: T.sm, fontWeight: "400", color: colors.onSurfaceSecondary },
-  note: { fontSize: T.sm, color: colors.onSurfaceSecondary, fontStyle: "italic", marginTop: spacing.md },
+  ctaRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: spacing.md, paddingTop: spacing.md, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
+  ctaText: { flex: 1, fontSize: T.base, color: colors.indigo, fontWeight: "600" },
 });
