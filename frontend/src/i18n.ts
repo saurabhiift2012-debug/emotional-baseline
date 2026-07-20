@@ -48,6 +48,17 @@ export const STR: Dict = {
 
   // crisis / emergency
   need_to_talk_now: { en: "Need to talk now?", hi: "अभी बात करनी है?" },
+  need_urgent_help: { en: "Need urgent help?", hi: "तत्काल मदद चाहिए?" },
+  crisis_screen_title: { en: "Need urgent help?", hi: "तत्काल मदद चाहिए?" },
+  crisis_screen_body: { en: "If you might be in danger or thinking about harming yourself, please reach out now. You don't have to handle this alone.", hi: "यदि आप खतरे में हो सकते हैं या खुद को नुकसान पहुँचाने के बारे में सोच रहे हैं, तो कृपया अभी संपर्क करें। आपको इसे अकेले नहीं संभालना है।" },
+  support_gentle: { en: "Thanks for checking in — today looks heavier.", hi: "चेक-इन के लिए धन्यवाद — आज दिन थोड़ा भारी लगता है।" },
+  talk_15_min: { en: "Talk to a psychologist (15 min)", hi: "मनोवैज्ञानिक से बात करें (15 मिनट)" },
+  escalate_copy: { en: "You've had a few heavier days. Talking it through with a psychologist could help — want to book a 15-minute call?", hi: "आपके कुछ भारी दिन रहे हैं। किसी मनोवैज्ञानिक से बात करना मदद कर सकता है — क्या आप 15 मिनट की कॉल बुक करना चाहेंगे?" },
+  book_15_min_call: { en: "Book a 15-minute call", hi: "15 मिनट की कॉल बुक करें" },
+  screening_q: { en: "In the last two weeks, have you had thoughts of harming yourself?", hi: "पिछले दो सप्ताह में, क्या आपके मन में खुद को नुकसान पहुँचाने के विचार आए हैं?" },
+  weighing_label: { en: "Anything weighing on you? (optional)", hi: "कुछ है जो आपको भारी लग रहा है? (वैकल्पिक)" },
+  more_label: { en: "More", hi: "और" },
+  trend_your_pattern: { en: "This is your pattern over the last 30 days. Gaps are days without a check-in.", hi: "यह पिछले 30 दिनों में आपका पैटर्न है। रिक्त स्थान बिना चेक-इन वाले दिन हैं।" },
   you_not_alone: { en: "You are not alone", hi: "आप अकेले नहीं हैं" },
   crisis_intro: { en: "If you are in danger or in crisis, please reach one of these numbers now.", hi: "यदि आप खतरे या संकट में हैं, तो कृपया अभी इनमें से किसी नंबर पर संपर्क करें।" },
   book_a_psychologist: { en: "Book a psychologist", hi: "मनोवैज्ञानिक बुक करें" },

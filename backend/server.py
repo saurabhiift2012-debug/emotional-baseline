@@ -471,14 +471,28 @@ def compute_pulse(checkins, healths, health_by_date):
 
 
 def detect_low_mood(checkins):
-    """Deterministic repeated-lower-mood detection vs personal baseline."""
-    if len(checkins) < 5:
+    """Deterministic repeated-lower-mood detection.
+
+    - Cold-start: for the first 14 days (no personal baseline yet) use a fixed
+      population default baseline of 3.0 so early distress can still trigger.
+    - 'Numb' is treated as a monitor signal (counts toward the pattern regardless
+      of its numeric value), and 'Numb the day after any low mood' escalates.
+    """
+    if not checkins:
         return {"repeated_low": False}
     ordered = sorted(checkins, key=lambda c: c['date'])
-    baseline = np.mean([c['mood_value'] for c in ordered])
+    baseline = 3.0 if len(ordered) < 14 else float(np.mean([c['mood_value'] for c in ordered]))
+    LOW = {"heavy", "anxious", "frustrated"}
     last7 = ordered[-7:]
-    lows = [c for c in last7 if c['mood_value'] < baseline - 0.5]
-    return {"repeated_low": len(lows) >= 3, "count": len(lows), "window": len(last7)}
+    below = [c for c in last7 if c['mood_value'] < baseline - 0.5 or c.get('mood') == 'numb']
+    last4 = ordered[-4:]
+    low_or_numb_4 = [c for c in last4 if c.get('group') == 'low' or c.get('mood') == 'numb']
+    numb_after_low = False
+    for prev, cur in zip(ordered, ordered[1:]):
+        if cur.get('mood') == 'numb' and (prev.get('group') == 'low' or prev.get('mood') in LOW) and cur in last7:
+            numb_after_low = True
+    repeated = (len(below) >= 3) or (len(low_or_numb_4) >= 2) or numb_after_low
+    return {"repeated_low": bool(repeated), "count": len(below), "numb_after_low": numb_after_low}
 
 
 def pick_small_step(last_mood_value: Optional[int]) -> dict:
@@ -541,9 +555,9 @@ def assess_day(todays_entries, checkins):
     if low >= 2:
         text = "You've checked in feeling low a few times today."
         if recent_low_days >= 2:
-            text += " It's shown up across recent days too — you don't have to carry this alone. A short talk with someone might help."
+            text += " It's shown up across recent days too. Booking a 15-minute call with a psychologist could help."
         else:
-            text += " That can be draining. Be gentle with yourself, and reach out if it lingers."
+            text += " That can be draining. Be gentle with yourself."
         return {"tone": "low", "text": text}
     if low == 1 and n == 1:
         return {"tone": "low",
@@ -981,7 +995,15 @@ async def today(user: dict = Depends(get_current_user)):
     latest_group = latest.get('group') if latest else (checkins[-1].get('group') if checkins else None)
     latest_mood_key = latest['mood'] if latest else (checkins[-1]['mood'] if checkins else None)
     LOW_KEYS = {"heavy", "anxious", "frustrated"}
-    call_recommended = bool(lmj.get('repeated_low') or (latest_mood_key in LOW_KEYS))
+    # Tiered support: 'escalate' (repeated-low pattern) foregrounds the 15-min call
+    # after a self-harm screening; 'gentle' (single low today) offers a low-key
+    # option only; 'none' otherwise. Crisis access is independent of all this.
+    if lmj.get('repeated_low'):
+        support_tier = "escalate"
+    elif latest_mood_key in LOW_KEYS:
+        support_tier = "gentle"
+    else:
+        support_tier = "none"
     day_notice = assess_day(todays_entries, checkins) if user.get('consents', {}).get('personal_insights', True) else None
     return {
         "greeting": greeting,
@@ -993,9 +1015,9 @@ async def today(user: dict = Depends(get_current_user)):
         "signals": signals,
         "observation": observation,
         "day_notice": day_notice,
-        "small_step": pick_small_step(last_value),
         "low_mood_journey": lmj,
-        "call_recommended": call_recommended,
+        "support_tier": support_tier,
+        "screening_required": support_tier == "escalate",
         "latest_group": latest_group,
     }
 
@@ -1102,13 +1124,13 @@ STORY_MATRIX = {
     },
     "low": {
         "improving": "It's been a heavier stretch, but the recent trend is quietly lifting. That upward turn matters — hold onto whatever is helping.",
-        "declining": "These have been heavier days, and the trend kept dipping. You don't have to carry this alone — a short talk with someone might help.",
-        "steady": "You've sat with a lot of heaviness lately, holding fairly level. That's hard to do — please be gentle, and consider reaching out.",
-        "volatile": "Heavier days have come and gone in waves. When lows swing like this, extra support and steadier routines can make a real difference.",
+        "declining": "These have been heavier days, and the trend kept dipping. Talking it through with a psychologist on a 15-minute call could help.",
+        "steady": "You've sat with a lot of heaviness lately, holding fairly level. That's hard to do — please be gentle; a 15-minute psychologist call could help.",
+        "volatile": "Heavier days have come and gone in waves. A 15-minute psychologist call and steadier routines can make a real difference.",
     },
     "mixed": {
         "improving": "Your days have been a real mix, and the overall direction is lifting. Range is human — and the trend is a kind one right now.",
-        "declining": "It's been a mixed stretch that edged downward lately. Mixed days are normal; if the dip continues, it's worth talking it through.",
+        "declining": "It's been a mixed stretch that edged downward lately. If the dip continues, a 15-minute psychologist call could help.",
         "steady": "You've moved between heavier and brighter days around a steady centre. That variety is part of a full emotional life.",
         "volatile": "Your days swung widely between light and heavy. Big swings can be tiring — noticing your triggers is a strong first step.",
     },

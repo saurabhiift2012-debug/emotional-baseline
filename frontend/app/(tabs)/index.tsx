@@ -9,7 +9,6 @@ import { moodByKey } from "@/src/moods";
 import { MoodSelector } from "@/src/MoodSelector";
 import { MoodEmoji } from "@/src/MoodEmoji";
 import { Logo } from "@/src/Logo";
-import { CrisisSheet } from "@/src/CrisisSheet";
 import { Screen, Display, AppText, Card, SectionTitle, Loading, spacing, radius, font, T, useTheme, useThemedStyles } from "@/src/ui";
 
 export default function Today() {
@@ -21,8 +20,7 @@ export default function Today() {
   const [loading, setLoading] = useState(true);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [justSaved, setJustSaved] = useState(false);
-  const [lowPrompt, setLowPrompt] = useState(false);
-  const [crisis, setCrisis] = useState(false);
+  const [screenAnswer, setScreenAnswer] = useState<boolean | null>(null);
 
   const LOW_MOODS = ["heavy", "anxious", "frustrated"];
 
@@ -43,13 +41,11 @@ export default function Today() {
     try {
       await api.post("/checkins", { mood, context: [], note: null, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC" });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      if (LOW_MOODS.includes(mood)) {
-        setLowPrompt(true);
-        setJustSaved(false);
-      } else {
-        setLowPrompt(false);
+      if (!LOW_MOODS.includes(mood)) {
         setJustSaved(true);
         setTimeout(() => setJustSaved(false), 2200);
+      } else {
+        setJustSaved(false);
       }
       await load();
     } catch {}
@@ -58,7 +54,6 @@ export default function Today() {
   if (loading) return <Screen><Loading /></Screen>;
 
   const greetKey = data?.greeting === "morning" ? "good_morning" : data?.greeting === "afternoon" ? "good_afternoon" : "good_evening";
-  const step = data?.small_step;
   const noticeText = data?.day_notice?.text || data?.observation;
 
   const sendFeedback = async (resp: string) => {
@@ -76,10 +71,6 @@ export default function Today() {
       >
         <View style={styles.topBar}>
           <Logo size={40} />
-          <Pressable testID="need-talk-now" onPress={() => setCrisis(true)} style={styles.talkNow}>
-            <Feather name="phone-call" size={14} color={colors.rose} />
-            <AppText style={styles.talkNowText}>{t("need_to_talk_now")}</AppText>
-          </Pressable>
         </View>
         <AppText style={styles.greet}>{t(greetKey)},</AppText>
         <Display style={styles.name}>{firstName(data?.name || user?.name)} 🌿</Display>
@@ -94,21 +85,6 @@ export default function Today() {
             <View style={styles.savedPill} testID="quicklog-saved">
               <Feather name="check" size={14} color={colors.onSurface} />
               <AppText style={styles.savedPillText}>{t("thanks_checkin")}</AppText>
-            </View>
-          ) : null}
-          {lowPrompt ? (
-            <View style={styles.lowPrompt} testID="low-mood-prompt">
-              <AppText style={styles.lowPromptThanks}>{t("thanks_checkin")}</AppText>
-              <AppText style={styles.lowPromptText}>{t("talk_title")}</AppText>
-              <View style={styles.lowPromptRow}>
-                <Pressable testID="low-prompt-book" onPress={() => { setLowPrompt(false); router.push("/psychologists"); }} style={styles.lowPromptBook}>
-                  <Feather name="phone-call" size={15} color={colors.onSurfaceInverse} />
-                  <AppText style={styles.lowPromptBookText}>{t("book_15_call")}</AppText>
-                </Pressable>
-                <Pressable testID="low-prompt-dismiss" onPress={() => setLowPrompt(false)} style={styles.lowPromptDismiss}>
-                  <AppText style={styles.lowPromptDismissText}>{t("im_okay")}</AppText>
-                </Pressable>
-              </View>
             </View>
           ) : null}
           <View style={{ height: spacing.md }} />
@@ -146,34 +122,42 @@ export default function Today() {
           </Card>
         ) : null}
 
-        {/* Repeated low mood gentle banner */}
-        {data?.low_mood_journey?.repeated_low && (
-          <Card tint={colors.surfaceTertiary} style={{ marginTop: spacing.lg }}>
-            <SectionTitle style={{ fontSize: T.lg }}>{t("repeated_low_title")}</SectionTitle>
-            <AppText style={{ color: colors.onSurfaceSecondary, marginBottom: spacing.md }}>{t("repeated_low_body")}</AppText>
-            <View style={{ flexDirection: "row", gap: spacing.sm }}>
-              <Pressable testID="repeated-explore" onPress={() => router.push("/(tabs)/insights")} style={styles.miniBtn}>
-                <AppText style={styles.miniBtnText}>{t("explore_patterns")}</AppText>
-              </Pressable>
-              <Pressable testID="repeated-connect" onPress={() => router.push("/(tabs)/support")} style={[styles.miniBtn, { backgroundColor: colors.indigo }]}>
-                <AppText style={[styles.miniBtnText, { color: colors.onSurfaceInverse }]}>{t("connect_psych")}</AppText>
-              </Pressable>
-            </View>
-          </Card>
-        )}
-
-        {/* Talk to someone — 15-min paid call, suggested when feeling low */}
-        {data?.call_recommended && (
-          <Card tint={colors.tintLav} style={{ marginTop: spacing.lg }} testID="talk-card">
+        {/* TIERED SUPPORT — escalate (repeated-low) foregrounds the call after a
+            self-harm screening; gentle (single low today) offers a low-key option. */}
+        {data?.support_tier === "escalate" && (
+          <Card tint={colors.tintLav} style={{ marginTop: spacing.lg }} testID="escalate-card">
             <View style={styles.talkTag}>
               <Feather name="phone-call" size={12} color={colors.indigo} />
               <AppText style={styles.talkTagText}>{t("recommended_for_you")}</AppText>
             </View>
-            <Display style={styles.talkTitle}>{t("talk_title")}</Display>
-            <AppText style={styles.talkBody}>{t("talk_body")}</AppText>
-            <Pressable testID="book-call-button" onPress={() => router.push("/psychologists")} style={styles.talkBtn}>
-              <Feather name="phone-call" size={16} color={colors.onSurfaceInverse} />
-              <AppText style={styles.talkBtnText}>{t("book_15_call")}</AppText>
+            <AppText style={styles.talkBody}>{t("escalate_copy")}</AppText>
+            {screenAnswer === null ? (
+              <>
+                <AppText style={styles.screenQ}>{t("screening_q")}</AppText>
+                <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.sm }}>
+                  <Pressable testID="screen-yes" onPress={() => { setScreenAnswer(true); router.push("/crisis"); }} style={styles.screenBtn}>
+                    <AppText style={styles.screenBtnText}>{t("yes")}</AppText>
+                  </Pressable>
+                  <Pressable testID="screen-no" onPress={() => setScreenAnswer(false)} style={styles.screenBtn}>
+                    <AppText style={styles.screenBtnText}>{t("no")}</AppText>
+                  </Pressable>
+                </View>
+              </>
+            ) : screenAnswer === false ? (
+              <Pressable testID="escalate-book" onPress={() => router.push("/psychologists")} style={styles.talkBtn}>
+                <Feather name="phone-call" size={16} color={colors.onSurfaceInverse} />
+                <AppText style={styles.talkBtnText}>{t("book_15_min_call")}</AppText>
+              </Pressable>
+            ) : null}
+          </Card>
+        )}
+
+        {data?.support_tier === "gentle" && (
+          <Card style={{ marginTop: spacing.lg }} testID="gentle-card">
+            <AppText style={styles.talkBody}>{t("support_gentle")}</AppText>
+            <Pressable testID="gentle-talk" onPress={() => router.push("/psychologists")} style={styles.gentleLink}>
+              <Feather name="phone-call" size={14} color={colors.indigo} />
+              <AppText style={styles.gentleLinkText}>{t("talk_15_min")}</AppText>
             </Pressable>
           </Card>
         )}
