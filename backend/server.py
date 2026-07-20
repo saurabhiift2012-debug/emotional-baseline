@@ -215,50 +215,6 @@ async def ensure_health_day(user_id: str, d: str, mood_value: Optional[int] = No
 
 
 # ----------------------------------------------------------------------------
-# Seed 6 weeks of realistic, correlated history on registration so that the
-# Insights / Progress / Pulse screens have meaningful content immediately.
-# (Uses simulated health data — clearly demo history.)
-# ----------------------------------------------------------------------------
-async def seed_history(user_id: str, days: int = 42):
-    rng = random.Random(f"seed:{user_id}")
-    mood_keys = [m['key'] for m in MOODS]
-    weekday_bias = {0: -0.6, 1: -0.3, 2: 0.0, 3: 0.1, 4: 0.4, 5: 0.6, 6: 0.3}
-    today = date.today()
-    checkins = []
-    healths = []
-    for i in range(days, 0, -1):
-        d = today - timedelta(days=i)
-        ds = d.isoformat()
-        # simulate a sleep-driven mood with weekday bias
-        prev_sleep_good = rng.random() < 0.5
-        target = 4 + weekday_bias[d.weekday()] + (0.9 if prev_sleep_good else -0.9) + rng.gauss(0, 0.8)
-        target = max(1, min(6, round(target)))
-        candidates = [m for m in MOODS if abs(m['value'] - target) <= 1]
-        chosen = rng.choice(candidates) if candidates else rng.choice(MOODS)
-        # 82% of days have a check-in
-        if rng.random() < 0.82:
-            ctx = []
-            if chosen['value'] <= 3 and rng.random() < 0.6:
-                ctx = rng.sample(["work", "sleep", "money", "health"], k=rng.randint(1, 2))
-            elif rng.random() < 0.3:
-                ctx = [rng.choice(["social", "exercise", "family", "weather"])]
-            checkins.append({
-                "user_id": user_id, "date": ds, "mood": chosen['key'],
-                "mood_value": chosen['value'], "group": chosen['group'],
-                "context": ctx, "note": None, "timezone": "UTC",
-                "created_at": datetime.combine(d, datetime.min.time(), timezone.utc).isoformat(),
-                "seeded": True,
-            })
-        hd = gen_health_for_day(user_id, ds, chosen['value'])
-        hd["user_id"] = user_id
-        healths.append(hd)
-    if checkins:
-        await db.checkins.insert_many(checkins)
-    if healths:
-        await db.health_days.insert_many(healths)
-
-
-# ----------------------------------------------------------------------------
 # Analytics: personal baseline + deterministic pattern engine
 # ----------------------------------------------------------------------------
 async def load_frames(user_id: str):
@@ -352,19 +308,22 @@ def build_insights(checkins, health_by_date):
                              f"Your mood has tended to be lower on {names[low_wd]}s.",
                              len(checkins), 0.3, "weekday"))
 
-    # context patterns
-    overall_mood = np.mean([c['mood_value'] for c in checkins]) if checkins else 4
-    ctx_stats = {}
-    for c in checkins:
-        for t in c.get('context', []):
-            ctx_stats.setdefault(t, []).append(c['mood_value'])
-    for tag, vals in ctx_stats.items():
-        if len(vals) >= 3:
-            m = np.mean(vals)
-            if m <= overall_mood - 0.4:
-                context_patterns.append(_insight(f"ctx_{tag}", "emerging" if len(vals) >= 6 else "early_signal",
+    # context patterns — surface ONLY with enough data:
+    #   * total check-ins n >= 7, AND
+    #   * the specific tag chosen >= 3 times in LOW-MOOD check-ins.
+    # Otherwise render nothing (the UI shows a neutral empty state).
+    context_patterns = []
+    if len(checkins) >= 7:
+        ctx_low_counts = {}
+        for c in checkins:
+            if c.get('group') == 'low':
+                for tag in c.get('context', []):
+                    ctx_low_counts[tag] = ctx_low_counts.get(tag, 0) + 1
+        for tag, low_count in ctx_low_counts.items():
+            if low_count >= 3:
+                context_patterns.append(_insight(f"ctx_{tag}", "emerging" if low_count >= 6 else "early_signal",
                              f"{tag.capitalize()} has appeared frequently in your lower-mood check-ins.",
-                             len(vals), 0.3, "context"))
+                             low_count, 0.3, "context"))
     return {
         "helps": helps,
         "harder": harder,
@@ -765,7 +724,6 @@ async def verify_otp(body: VerifyOtpIn):
         }
         res = await db.users.insert_one(doc)
         uid = str(res.inserted_id)
-        await seed_history(uid)
         user = await db.users.find_one({"_id": res.inserted_id})
     await db.otps.delete_one({"_id": rec["_id"]})
     token = create_token(str(user['_id']))
@@ -1424,7 +1382,6 @@ async def _startup_seed():
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
         res = await db.users.insert_one(doc)
-        await seed_history(str(res.inserted_id))
 
 
 

@@ -176,7 +176,7 @@ export const STR: Dict = {
   patterns_notice: { en: "Patterns worth noticing", hi: "ध्यान देने योग्य पैटर्न" },
   context_patterns: { en: "Context patterns", hi: "संदर्भ पैटर्न" },
   why_seeing: { en: "Why am I seeing this?", hi: "मुझे यह क्यों दिख रहा है?" },
-  insights_empty: { en: "As you check in, patterns will gently emerge here.", hi: "जैसे-जैसे आप चेक-इन करेंगे, यहाँ धीरे-धीरे पैटर्न उभरेंगे।" },
+  insights_empty: { en: "Keep checking in — patterns will appear here once there's enough to notice.", hi: "चेक-इन करते रहें — जब पर्याप्त जानकारी होगी तब यहाँ पैटर्न दिखने लगेंगे।" },
 
   // pulse
   pulse_title: { en: "Your Wellbeing Pulse", hi: "आपकी वेलबीइंग पल्स" },

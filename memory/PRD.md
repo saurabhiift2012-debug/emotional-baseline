@@ -88,3 +88,16 @@ how I feel?" via a DETERMINISTIC pattern engine. Never diagnoses. Private by def
   removed unused email/password /auth/register + /auth/login routes (now 404) + RegisterIn/LoginIn/
   hash_password/verify_password/bcrypt/EmailStr dead code. CORS left permissive per user (lock at deploy).
 - Verified: 16/16 backend pytest green + full frontend Playwright flows (iteration_12).
+
+## Session update 2026-06-20 (Insights — real-data-only fix) — DONE
+- ROOT CAUSE of "money has appeared frequently in lower-mood check-ins" for empty users:
+  SEEDED/DEMO data. seed_history() inserted 42 days of fake check-ins (tagged seeded:True)
+  that added money/work/sleep/health context on low-mood days; text itself was a template string.
+- Removed seed_history() function + both callers (new-user OTP registration + startup demo account).
+- Deleted 485 existing seeded check-ins from DB (seeded:True). Insights now use real data only.
+- build_insights context patterns now gated STRICTLY: total n>=7 AND tag chosen >=3 times in
+  LOW-MOOD (group=='low') check-ins; else renders nothing. Gate lives inside build_insights so
+  every caller (/insights, today_observation, story) is covered.
+- Empty state text set to: "Keep checking in — patterns will appear here once there's enough to notice."
+- Verified: 3 unit cases (n=6→none, n=7 w/2 low→none, n=7 w/3 low→money renders), API (demo now
+  0 context insights), and screenshot of neutral empty state.
