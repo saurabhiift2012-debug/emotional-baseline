@@ -12,6 +12,7 @@ import { useFonts } from "expo-font";
 import { useIconFonts } from "@/src/hooks/use-icon-fonts";
 import { AppProvider, useApp } from "@/src/AppContext";
 import { ThemeProvider, useTheme } from "@/src/ThemeContext";
+import { MoodGate } from "@/src/MoodGate";
 
 LogBox.ignoreAllLogs(true);
 SplashScreen.preventAutoHideAsync();
@@ -51,6 +52,7 @@ function ThemedStack() {
         <Stack.Screen name="crisis" options={{ presentation: "modal", animation: "slide_from_bottom" }} />
       </Stack>
       <UrgentHelpLink />
+      <MoodGate />
     </View>
   );
 }
