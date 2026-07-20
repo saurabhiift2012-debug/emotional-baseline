@@ -1,14 +1,13 @@
-import React, { useEffect, useRef, useMemo } from "react";
-import { View, Pressable, StyleSheet, Platform, PanResponder, useWindowDimensions } from "react-native";
+import React, { useEffect, useRef, useMemo, useState } from "react";
+import { View, Pressable, StyleSheet, Platform, PanResponder, AccessibilityInfo, useWindowDimensions } from "react-native";
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, Easing } from "react-native-reanimated";
-import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { useApp } from "./AppContext";
-import { AppText, font, useTheme } from "./ui";
+import { AppText, font } from "./ui";
 
 const ICONS: Record<string, any> = {
   index: "sun",
@@ -21,10 +20,17 @@ const ICONS: Record<string, any> = {
 const SIDE = 14;          // floating margin from screen edges
 const BAR_H = 60;         // capsule height
 const RADIUS = BAR_H / 2; // full capsule
-const PILL_INSET = 6;     // gap between the glass lens and item edges
+const PILL_INSET = 6;     // gap between the handle and item edges
 const LENS_H = BAR_H - 12;
 // damped, not bouncy
 const SPRING = { damping: 18, stiffness: 200, mass: 0.9 };
+
+// Opaque, grounded palette (no page show-through).
+const PLATE_IOS = "#EDEEF4";      // opaque backing plate (iOS glass sits on this)
+const TRACK_ANDROID = "#E7E9F5";  // solid Material 3 track
+const ACTIVE = "#414F86";         // active handle + fill
+const ACTIVE_TEXT = "#FFFFFF";    // on #414F86 -> ~7:1 (AA)
+const INACTIVE_TEXT = "#565A73";  // on the light plate -> ~5.4:1 (AA); grounded from #C4C8DA which fails AA as text
 
 function TabIcon({ name, focused, color }: { name: any; focused: boolean; color: string }) {
   const scale = useSharedValue(focused ? 1.06 : 0.94);
@@ -41,10 +47,26 @@ function TabIcon({ name, focused, color }: { name: any; focused: boolean; color:
 
 export function GlassTabBar({ state, navigation }: BottomTabBarProps) {
   const { t } = useApp();
-  const { colors, scheme } = useTheme();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const dark = scheme === "dark";
+
+  // iOS "Reduce Transparency" / "Increase Contrast" -> drop the glass sheen for a flat solid plate.
+  const [reduceTransparency, setReduceTransparency] = useState(false);
+  useEffect(() => {
+    let mounted = true;
+    (AccessibilityInfo as any).isReduceTransparencyEnabled?.()
+      .then((v: boolean) => { if (mounted) setReduceTransparency(!!v); })
+      .catch(() => {});
+    const sub = AccessibilityInfo.addEventListener?.(
+      "reduceTransparencyChanged" as any,
+      (v: boolean) => setReduceTransparency(!!v)
+    );
+    return () => { mounted = false; (sub as any)?.remove?.(); };
+  }, []);
+
+  const isIOS = Platform.OS === "ios";
+  const groundedGlass = isIOS && !reduceTransparency; // frosted sheen ON the opaque plate
+  const plateColor = isIOS ? PLATE_IOS : TRACK_ANDROID;
 
   const labels: Record<string, string> = {
     index: t("tab_today"),
@@ -67,7 +89,7 @@ export function GlassTabBar({ state, navigation }: BottomTabBarProps) {
 
   const lensStyle = useAnimatedStyle(() => ({ transform: [{ translateX: tx.value }] }));
 
-  // --- Drag the glass lens across tabs (in addition to tapping) ---
+  // --- Drag the handle across pages (in addition to tapping) ---
   const minX = PILL_INSET;
   const maxX = (n - 1) * itemW + PILL_INSET;
   const dragIdxRef = useRef(state.index);
@@ -96,7 +118,7 @@ export function GlassTabBar({ state, navigation }: BottomTabBarProps) {
   };
 
   // PanResponder: taps fall through to the Pressables (keeps tap + a11y);
-  // only a horizontal drag (>6px) claims the gesture and slides the lens.
+  // only a horizontal drag (>6px) claims the gesture and slides the handle.
   const panResponder = useMemo(() => PanResponder.create({
     onStartShouldSetPanResponder: () => false,
     onStartShouldSetPanResponderCapture: () => false,
@@ -108,59 +130,38 @@ export function GlassTabBar({ state, navigation }: BottomTabBarProps) {
     onPanResponderTerminate: onDragEnd,
   }), [state.index, itemW, n, lensW, minX, maxX]);
 
-  // Liquid Glass tint values
-  const blurTint = Platform.OS === "ios"
-    ? (dark ? "systemChromeMaterialDark" : "systemChromeMaterialLight")
-    : (dark ? "dark" : "light");
-  const blurIntensity = Platform.OS === "ios" ? 75 : dark ? 55 : 85;
-
   return (
     <View style={[styles.outer, { left: SIDE, right: SIDE, bottom: insets.bottom + 8 }]} testID="glass-tabbar" pointerEvents="box-none">
-      <View style={[styles.glass, { height: BAR_H, borderRadius: RADIUS }]}>
-        <BlurView
-          intensity={blurIntensity}
-          tint={blurTint as any}
-          experimentalBlurMethod={Platform.OS === "android" ? "dimezisBlurView" : undefined}
-          style={StyleSheet.absoluteFill}
-        />
-        {/* legibility wash — keeps text/icons readable; kept light so the glass reads translucent, not white */}
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: dark ? "#15120D" : "#FFFFFF", opacity: dark ? 0.24 : 0.14, borderRadius: RADIUS }]} />
-        {/* top specular highlight (edge sheen) */}
-        <LinearGradient
-          colors={dark
-            ? ["rgba(255,255,255,0.18)", "rgba(255,255,255,0.02)", "rgba(255,255,255,0.05)"]
-            : ["rgba(255,255,255,0.45)", "rgba(255,255,255,0.02)", "rgba(255,255,255,0.10)"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-          style={[StyleSheet.absoluteFill, { borderRadius: RADIUS }]}
-        />
-        {/* crisp glass rim */}
-        <View style={[StyleSheet.absoluteFill, styles.rim, { borderRadius: RADIUS, borderColor: dark ? "rgba(255,255,255,0.16)" : "rgba(255,255,255,0.7)" }]} />
+      <View style={[styles.plate, { height: BAR_H, borderRadius: RADIUS, backgroundColor: plateColor }]}>
+        {/* iOS: frosted-glass sheen painted ON the opaque plate (never on the page). */}
+        {groundedGlass ? (
+          <>
+            <LinearGradient
+              colors={["rgba(255,255,255,0.55)", "rgba(255,255,255,0.06)", "rgba(65,79,134,0.05)"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 0, y: 1 }}
+              style={[StyleSheet.absoluteFill, { borderRadius: RADIUS }]}
+            />
+            <View style={[StyleSheet.absoluteFill, styles.rim, { borderRadius: RADIUS }]} />
+          </>
+        ) : null}
 
-        {/* sliding refractive "lens" behind the active tab */}
-        <Animated.View style={[styles.lens, { width: lensW, height: LENS_H, borderRadius: LENS_H / 2 }, lensStyle]}>
-          <BlurView
-            intensity={Platform.OS === "ios" ? 30 : 24}
-            tint={blurTint as any}
-            experimentalBlurMethod={Platform.OS === "android" ? "dimezisBlurView" : undefined}
-            style={[StyleSheet.absoluteFill, { borderRadius: LENS_H / 2 }]}
-          />
-          <View style={[StyleSheet.absoluteFill, { borderRadius: LENS_H / 2, backgroundColor: dark ? "rgba(148,167,220,0.28)" : "rgba(255,255,255,0.55)" }]} />
-          <LinearGradient
-            colors={dark
-              ? ["rgba(255,255,255,0.28)", "rgba(255,255,255,0.04)"]
-              : ["rgba(255,255,255,0.9)", "rgba(255,255,255,0.15)"]}
-            start={{ x: 0.2, y: 0 }}
-            end={{ x: 0.8, y: 1 }}
-            style={[StyleSheet.absoluteFill, { borderRadius: LENS_H / 2 }]}
-          />
-          <View style={[StyleSheet.absoluteFill, { borderRadius: LENS_H / 2, borderWidth: 1, borderColor: dark ? "rgba(255,255,255,0.35)" : "rgba(255,255,255,0.9)" }]} />
+        {/* sliding solid handle */}
+        <Animated.View style={[styles.lens, { width: lensW, height: LENS_H, borderRadius: LENS_H / 2, backgroundColor: ACTIVE }, lensStyle]}>
+          {groundedGlass ? (
+            <LinearGradient
+              colors={["rgba(255,255,255,0.28)", "rgba(255,255,255,0.02)"]}
+              start={{ x: 0.2, y: 0 }}
+              end={{ x: 0.8, y: 1 }}
+              style={[StyleSheet.absoluteFill, { borderRadius: LENS_H / 2 }]}
+            />
+          ) : null}
         </Animated.View>
 
         <View style={styles.row} {...panResponder.panHandlers}>
           {state.routes.map((route, index) => {
             const focused = state.index === index;
-            const color = focused ? colors.indigo : colors.onSurfaceSecondary;
+            const color = focused ? ACTIVE_TEXT : INACTIVE_TEXT;
             const onPress = () => {
               Haptics.selectionAsync();
               const event = navigation.emit({ type: "tabPress", target: route.key, canPreventDefault: true });
@@ -191,19 +192,19 @@ export function GlassTabBar({ state, navigation }: BottomTabBarProps) {
 const styles = StyleSheet.create({
   outer: {
     position: "absolute",
-    // soft floating shadow (not clipped — sits on the non-overflow outer view)
+    // soft floating shadow (sits on the non-overflow outer view so it isn't clipped)
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.18,
-    shadowRadius: 18,
+    shadowOpacity: 0.16,
+    shadowRadius: 16,
     elevation: 12,
   },
-  glass: {
+  plate: {
     width: "100%",
-    overflow: "hidden",
+    overflow: "hidden",       // page content clips at the slider edge
     justifyContent: "center",
   },
-  rim: { borderWidth: 1 },
+  rim: { borderWidth: 1, borderColor: "rgba(255,255,255,0.6)" },
   lens: {
     position: "absolute",
     left: 0,
@@ -211,7 +212,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
+    shadowOpacity: 0.16,
     shadowRadius: 5,
   },
   row: { flexDirection: "row", alignItems: "center", height: BAR_H },
