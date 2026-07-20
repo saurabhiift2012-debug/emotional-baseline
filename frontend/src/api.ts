@@ -55,6 +55,24 @@ export const api = {
   },
 };
 
+export async function adminAuth(passcode: string) {
+  const res = await fetch(`${BASE}/api/admin/auth`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ passcode }),
+  });
+  return handle(res);
+}
+
+export function adminApi(token: string) {
+  const h = { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
+  return {
+    get: async (path: string) => handle(await fetch(`${BASE}/api${path}`, { headers: h })),
+    put: async (path: string, body?: any) =>
+      handle(await fetch(`${BASE}/api${path}`, { method: "PUT", headers: h, body: body ? JSON.stringify(body) : undefined })),
+  };
+}
+
 export async function saveToken(token: string) {
   await storage.secureSet(TOKEN_KEY, token);
 }

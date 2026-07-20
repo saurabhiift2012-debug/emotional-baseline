@@ -125,7 +125,13 @@ export default function Me() {
           <Logo size={40} />
           <View style={{ marginLeft: spacing.md }}>
             <AppText style={styles.aboutName}>TherapiShots</AppText>
-            <AppText style={styles.aboutVersion}>{t("version")} {Constants.expoConfig?.version || "1.0.0"}</AppText>
+            <Pressable
+              testID="about-version"
+              onLongPress={() => { Haptics.selectionAsync(); router.push("/admin"); }}
+              delayLongPress={800}
+            >
+              <AppText style={styles.aboutVersion}>{t("version")} {Constants.expoConfig?.version || "1.0.0"}</AppText>
+            </Pressable>
           </View>
         </Card>
 

@@ -11,6 +11,7 @@ type User = {
   language: Lang;
   consents: Record<string, boolean>;
   health_connected: Record<string, boolean>;
+  assigned_resources?: string[];
 };
 
 type Ctx = {

@@ -89,8 +89,7 @@ how I feel?" via a DETERMINISTIC pattern engine. Never diagnoses. Private by def
   hash_password/verify_password/bcrypt/EmailStr dead code. CORS left permissive per user (lock at deploy).
 - Verified: 16/16 backend pytest green + full frontend Playwright flows (iteration_12).
 
-## Session update 2026-06-20 (Insights — real-data-only fix) — DONE
-- ROOT CAUSE of "money has appeared frequently in lower-mood check-ins" for empty users:
+## Session update 2026-06-20 (Insights — real-data-only fix) — DONE- ROOT CAUSE of "money has appeared frequently in lower-mood check-ins" for empty users:
   SEEDED/DEMO data. seed_history() inserted 42 days of fake check-ins (tagged seeded:True)
   that added money/work/sleep/health context on low-mood days; text itself was a template string.
 - Removed seed_history() function + both callers (new-user OTP registration + startup demo account).
@@ -101,3 +100,14 @@ how I feel?" via a DETERMINISTIC pattern engine. Never diagnoses. Private by def
 - Empty state text set to: "Keep checking in — patterns will appear here once there's enough to notice."
 - Verified: 3 unit cases (n=6→none, n=7 w/2 low→none, n=7 w/3 low→money renders), API (demo now
   0 context insights), and screenshot of neutral empty state.
+
+## Session update 2026-06 (Phase B — Admin dashboard + role-gated resources) — DONE
+- Hidden **Admin Usage Dashboard**: entry via long-press on version number in Me→About → /admin.
+  Passcode-gated (ADMIN_PASSCODE in backend/.env, 12h admin JWT, role claim). PII masked.
+  Endpoints: POST /api/admin/auth, GET /api/admin/metrics (totals, active 7/30d, revenue, 7-day trend),
+  GET /api/admin/users?q=, PUT /api/admin/users/{uid}/resources.
+- **Role-gated Wellbeing Resources**: resources locked by default (user.assigned_resources=[]);
+  admin unlocks per-user by tapping a user card and toggling resource keys. resources.tsx now shows a
+  locked empty state (Logo + "Talk to a psychologist" CTA) until resources are assigned.
+- Verified: backend curl (auth reject/accept, metrics, masked users, assign filters bogus keys, no-token 401)
+  + frontend screenshots (passcode gate, dashboard, user list, resource toggle persists).

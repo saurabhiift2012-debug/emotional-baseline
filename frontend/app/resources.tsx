@@ -4,6 +4,7 @@ import { useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useApp } from "@/src/AppContext";
+import { Logo } from "@/src/Logo";
 import { Screen, Display, AppText, Card, spacing, radius, T, useTheme, useThemedStyles } from "@/src/ui";
 
 type Res = {
@@ -47,11 +48,16 @@ const RESOURCES: Res[] = [
 ];
 
 export default function Resources() {
-  const { t, lang } = useApp();
+  const { t, lang, user, refreshUser } = useApp();
   const { colors } = useTheme();
   const styles = useThemedStyles(makeStyles);
   const router = useRouter();
-  const [open, setOpen] = useState<string | null>("breathing");
+  const [open, setOpen] = useState<string | null>(null);
+
+  React.useEffect(() => { refreshUser(); }, []);
+
+  const assigned = user?.assigned_resources || [];
+  const unlocked = RESOURCES.filter((r) => assigned.includes(r.key));
 
   return (
     <Screen>
@@ -62,31 +68,45 @@ export default function Resources() {
         <Display style={styles.title}>{t("resources")}</Display>
       </View>
       <ScrollView contentContainerStyle={styles.wrap} showsVerticalScrollIndicator={false}>
-        <AppText style={styles.intro}>{t("resources_intro")}</AppText>
-        {RESOURCES.map((r) => {
-          const isOpen = open === r.key;
-          const body = lang === "hi" ? r.hi_body : r.en_body;
-          return (
-            <Card key={r.key} style={{ marginBottom: spacing.md }} testID={`resource-${r.key}`}>
-              <Pressable onPress={() => { Haptics.selectionAsync(); setOpen(isOpen ? null : r.key); }} style={styles.rowHead}>
-                <View style={styles.icon}><Feather name={r.icon} size={18} color={colors.sage} /></View>
-                <AppText style={styles.rowTitle}>{lang === "hi" ? r.hi : r.en}</AppText>
-                <Feather name={isOpen ? "chevron-up" : "chevron-down"} size={20} color={colors.onSurfaceSecondary} />
-              </Pressable>
-              {isOpen && (
-                <View style={styles.body}>
-                  {body.map((line, i) => (
-                    <View key={i} style={styles.bullet}>
-                      <View style={styles.dot} />
-                      <AppText style={styles.bulletText}>{line}</AppText>
+        {unlocked.length === 0 ? (
+          <View style={styles.empty} testID="resources-locked">
+            <Logo size={64} />
+            <AppText style={styles.emptyTitle}>{t("resources_locked_title")}</AppText>
+            <AppText style={styles.emptyBody}>{t("resources_locked_body")}</AppText>
+            <Pressable style={styles.emptyCta} onPress={() => router.push("/psychologists")} testID="resources-book-cta">
+              <Feather name="message-circle" size={16} color={colors.onSurfaceInverse} />
+              <AppText style={styles.emptyCtaText}>{t("talk_psychologist")}</AppText>
+            </Pressable>
+          </View>
+        ) : (
+          <>
+            <AppText style={styles.intro}>{t("resources_intro")}</AppText>
+            {unlocked.map((r) => {
+              const isOpen = open === r.key;
+              const body = lang === "hi" ? r.hi_body : r.en_body;
+              return (
+                <Card key={r.key} style={{ marginBottom: spacing.md }} testID={`resource-${r.key}`}>
+                  <Pressable onPress={() => { Haptics.selectionAsync(); setOpen(isOpen ? null : r.key); }} style={styles.rowHead}>
+                    <View style={styles.icon}><Feather name={r.icon} size={18} color={colors.sage} /></View>
+                    <AppText style={styles.rowTitle}>{lang === "hi" ? r.hi : r.en}</AppText>
+                    <Feather name={isOpen ? "chevron-up" : "chevron-down"} size={20} color={colors.onSurfaceSecondary} />
+                  </Pressable>
+                  {isOpen && (
+                    <View style={styles.body}>
+                      {body.map((line, i) => (
+                        <View key={i} style={styles.bullet}>
+                          <View style={styles.dot} />
+                          <AppText style={styles.bulletText}>{line}</AppText>
+                        </View>
+                      ))}
                     </View>
-                  ))}
-                </View>
-              )}
-            </Card>
-          );
-        })}
-        <AppText style={styles.note}>{t("not_medical")}</AppText>
+                  )}
+                </Card>
+              );
+            })}
+            <AppText style={styles.note}>{t("not_medical")}</AppText>
+          </>
+        )}
         <View style={{ height: spacing.xl }} />
       </ScrollView>
     </Screen>
@@ -106,4 +126,9 @@ const makeStyles = (colors: any) => StyleSheet.create({
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.amber, marginTop: 8 },
   bulletText: { flex: 1, fontSize: T.base, color: colors.onSurface, lineHeight: 22 },
   note: { fontSize: T.sm, color: colors.onSurfaceSecondary, fontStyle: "italic", marginTop: spacing.md, lineHeight: 18 },
+  empty: { alignItems: "center", paddingTop: spacing.xl * 2, paddingHorizontal: spacing.lg, gap: spacing.md },
+  emptyTitle: { fontSize: T.xl, fontWeight: "600", color: colors.onSurface, textAlign: "center", marginTop: spacing.md },
+  emptyBody: { fontSize: T.base, color: colors.onSurfaceSecondary, textAlign: "center", lineHeight: 22 },
+  emptyCta: { flexDirection: "row", alignItems: "center", gap: spacing.sm, backgroundColor: colors.indigo, paddingVertical: spacing.md, paddingHorizontal: spacing.xl, borderRadius: radius.md, marginTop: spacing.md },
+  emptyCtaText: { color: colors.onSurfaceInverse, fontSize: T.base, fontWeight: "600" },
 });

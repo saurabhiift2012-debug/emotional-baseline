@@ -301,6 +301,33 @@ export const STR: Dict = {
   loading: { en: "Loading…", hi: "लोड हो रहा है…" },
   retry: { en: "Retry", hi: "पुनः प्रयास" },
   error_sync: { en: "Something went out of sync", hi: "कुछ सिंक से बाहर हो गया" },
+
+  // resources — locked / unlocked
+  resources_locked_title: { en: "No resources unlocked yet", hi: "अभी कोई संसाधन अनलॉक नहीं" },
+  resources_locked_body: { en: "Your psychologist can unlock personalised wellbeing resources for you after a session.", hi: "एक सत्र के बाद आपका मनोवैज्ञानिक आपके लिए व्यक्तिगत वेलबीइंग संसाधन अनलॉक कर सकता है।" },
+  talk_psychologist: { en: "Talk to a psychologist", hi: "मनोवैज्ञानिक से बात करें" },
+
+  // admin (hidden usage dashboard)
+  admin_title: { en: "Usage dashboard", hi: "उपयोग डैशबोर्ड" },
+  admin_enter_passcode: { en: "Enter admin passcode", hi: "एडमिन पासकोड दर्ज करें" },
+  admin_passcode: { en: "Passcode", hi: "पासकोड" },
+  admin_unlock: { en: "Unlock", hi: "अनलॉक करें" },
+  admin_wrong_passcode: { en: "Incorrect passcode.", hi: "गलत पासकोड।" },
+  admin_overview: { en: "Overview", hi: "अवलोकन" },
+  admin_total_users: { en: "Total users", hi: "कुल उपयोगकर्ता" },
+  admin_total_checkins: { en: "Total check-ins", hi: "कुल चेक-इन" },
+  admin_total_bookings: { en: "Total bookings", hi: "कुल बुकिंग" },
+  admin_confirmed: { en: "Confirmed", hi: "पुष्टि" },
+  admin_revenue: { en: "Revenue", hi: "राजस्व" },
+  admin_active_7d: { en: "Active users (7d)", hi: "सक्रिय उपयोगकर्ता (7 दिन)" },
+  admin_active_30d: { en: "Active users (30d)", hi: "सक्रिय उपयोगकर्ता (30 दिन)" },
+  admin_checkins_7d: { en: "Check-ins (7d)", hi: "चेक-इन (7 दिन)" },
+  admin_last7: { en: "Last 7 days", hi: "पिछले 7 दिन" },
+  admin_users: { en: "Users & resources", hi: "उपयोगकर्ता और संसाधन" },
+  admin_users_hint: { en: "Tap a user to unlock wellbeing resources for them.", hi: "उनके लिए संसाधन अनलॉक करने हेतु उपयोगकर्ता पर टैप करें।" },
+  admin_search_phone: { en: "Search by phone digits", hi: "फ़ोन अंकों से खोजें" },
+  admin_resources_saved: { en: "Saved", hi: "सहेजा गया" },
+  admin_checkins_short: { en: "check-ins", hi: "चेक-इन" },
 };
 
 export function makeT(lang: Lang) {
