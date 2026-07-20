@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, StyleSheet, TextInput, Pressable, Modal, ScrollView } from "react-native";
+import { View, StyleSheet, TextInput, Pressable, Modal, ScrollView, Platform } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
@@ -25,6 +25,7 @@ export default function Register() {
   const [relationship, setRelationship] = useState("");
   const [agreed, setAgreed] = useState(false);
   const [showRel, setShowRel] = useState(false);
+  const [showDob, setShowDob] = useState(false);
   const [showAgreement, setShowAgreement] = useState(false);
   const [code, setCode] = useState("");
   const [devCode, setDevCode] = useState<string | null>(null);
@@ -33,11 +34,16 @@ export default function Register() {
 
   const sendCode = async () => {
     setErr(null);
+    // Validate on press so the button is never left mysteriously disabled.
+    if (!(name.trim() && phone.trim() && dob.trim() && ecName.trim() && relationship && ecPhone.trim())) {
+      setErr(t("fill_required")); return;
+    }
+    if (!parseDDMMYYYY(dob.trim())) { setErr(t("fill_required")); return; }
     if (!agreed) { setErr(t("must_agree")); return; }
     setBusy(true);
     try {
       const res = await requestOtp({
-        phone: phone.trim(), mode: "register", name: name.trim(), date_of_birth: dob.trim(),
+        phone: phone.trim(), mode: "register", name: name.trim(), date_of_birth: dobToISO(dob.trim()),
         email: email.trim() || null, language: lang,
         emergency_contact_name: ecName.trim(),
         emergency_contact_relationship: relationship,
@@ -49,8 +55,6 @@ export default function Register() {
     } catch (e: any) { setErr(e.message || "Could not send code"); }
     finally { setBusy(false); }
   };
-
-  const canSubmit = !!(name && phone && dob && ecName && relationship && ecPhone && agreed);
 
   const verify = async () => {
     setErr(null); setBusy(true);
@@ -79,7 +83,32 @@ export default function Register() {
             <TextInput testID="register-phone-input" style={styles.input} value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholder="+91 98765 43210" placeholderTextColor={colors.onSurfaceSecondary} />
 
             <AppText style={styles.label}>{t("dob")}</AppText>
-            <TextInput testID="register-dob-input" style={styles.input} value={dob} onChangeText={setDob} placeholder="1995-05-20" placeholderTextColor={colors.onSurfaceSecondary} autoCapitalize="none" />
+            <View style={styles.dobRow}>
+              <TextInput testID="register-dob-input" style={[styles.input, { flex: 1 }]} value={dob} onChangeText={setDob} placeholder="DD-MM-YYYY" placeholderTextColor={colors.onSurfaceSecondary} autoCapitalize="none" keyboardType="number-pad" />
+              <Pressable testID="register-dob-calendar" onPress={() => setShowDob(true)} style={styles.calBtn}>
+                <Feather name="calendar" size={20} color={colors.indigo} />
+              </Pressable>
+            </View>
+            {showDob && Platform.OS !== "web" ? (
+              <>
+                <DateTimePicker
+                  testID="dob-picker"
+                  value={parseDDMMYYYY(dob) || new Date(2000, 0, 1)}
+                  mode="date"
+                  maximumDate={new Date()}
+                  display={Platform.OS === "ios" ? "spinner" : "default"}
+                  onChange={(e: any, d?: Date) => {
+                    if (Platform.OS !== "ios") setShowDob(false);
+                    if (e?.type !== "dismissed" && d) setDob(fmtDDMMYYYY(d));
+                  }}
+                />
+                {Platform.OS === "ios" ? (
+                  <Pressable onPress={() => setShowDob(false)} style={styles.pickerDone}>
+                    <AppText style={styles.pickerDoneText}>{t("done")}</AppText>
+                  </Pressable>
+                ) : null}
+              </>
+            ) : null}
 
             <AppText style={styles.label}>{t("email_optional")}</AppText>
             <TextInput testID="register-email-input" style={styles.input} value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" placeholder="you@example.com" placeholderTextColor={colors.onSurfaceSecondary} />
@@ -116,7 +145,7 @@ export default function Register() {
 
             {err ? <AppText testID="register-error" style={styles.err}>{err}</AppText> : null}
             <AppText style={styles.note}>{t("not_medical")}</AppText>
-            <PrimaryButton testID="register-send-otp-button" label={t("send_code")} disabled={busy || !canSubmit} onPress={sendCode} />
+            <PrimaryButton testID="register-send-otp-button" label={t("send_code")} disabled={busy} onPress={sendCode} />
             <GhostButton testID="to-login-button" label={t("i_have_account")} onPress={() => router.replace("/login")} />
 
             {/* Relationship picker */}
@@ -204,6 +233,10 @@ const makeStyles = (colors: any) => StyleSheet.create({
     paddingHorizontal: spacing.lg, flexDirection: "row", alignItems: "center", justifyContent: "space-between",
     borderWidth: 1, borderColor: colors.border,
   },
+  dobRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  calBtn: { width: 52, height: 52, borderRadius: radius.md, backgroundColor: colors.surfaceSecondary, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center" },
+  pickerDone: { alignSelf: "flex-end", paddingVertical: spacing.sm, paddingHorizontal: spacing.md },
+  pickerDoneText: { color: colors.indigo, fontWeight: "700", fontSize: T.base },
   dropdownText: { fontFamily: font.body, fontSize: T.lg, color: colors.onSurface },
   agreeRow: { flexDirection: "row", alignItems: "center", gap: spacing.md, marginTop: spacing.xl },
   checkbox: { width: 26, height: 26, borderRadius: 7, borderWidth: 2, borderColor: colors.borderStrong, alignItems: "center", justifyContent: "center" },

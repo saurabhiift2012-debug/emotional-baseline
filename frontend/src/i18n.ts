@@ -22,7 +22,7 @@ export const STR: Dict = {
   email_optional: { en: "Email (optional)", hi: "ईमेल (वैकल्पिक)" },
   mobile_number: { en: "Mobile number", hi: "मोबाइल नंबर" },
   password: { en: "Password", hi: "पासवर्ड" },
-  dob: { en: "Date of birth (YYYY-MM-DD)", hi: "जन्म तिथि (YYYY-MM-DD)" },
+  dob: { en: "Date of birth (DD-MM-YYYY)", hi: "जन्म तिथि (DD-MM-YYYY)" },
   continue: { en: "Continue", hi: "आगे बढ़ें" },
   no_account: { en: "New here? Create an account", hi: "नए हैं? खाता बनाएँ" },
   send_code: { en: "Send code", hi: "कोड भेजें" },
@@ -110,6 +110,9 @@ export const STR: Dict = {
   agree_checkbox: { en: "I have read and agree to the above", hi: "मैंने उपरोक्त पढ़ा और सहमत हूँ" },
   read_agreement: { en: "Read the agreement", hi: "अनुबंध पढ़ें" },
   must_agree: { en: "Please accept the agreement to continue.", hi: "जारी रखने के लिए कृपया अनुबंध स्वीकार करें।" },
+  fill_required: { en: "Please fill in all required fields to continue.", hi: "जारी रखने के लिए कृपया सभी आवश्यक फ़ील्ड भरें।" },
+  about: { en: "About", hi: "ऐप के बारे में" },
+  version: { en: "Version", hi: "संस्करण" },
 
   // tabs
   tab_today: { en: "Today", hi: "आज" },

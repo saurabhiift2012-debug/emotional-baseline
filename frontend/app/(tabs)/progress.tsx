@@ -7,6 +7,7 @@ import { api } from "@/src/api";
 import { GROUP_COLOR } from "@/src/moods";
 import { Screen, Display, AppText, Card, SectionTitle, Loading, spacing, radius, T, useTheme, useThemedStyles } from "@/src/ui";
 import { useTabBarPadding } from "@/src/GlassTabBar";
+import { Logo } from "@/src/Logo";
 
 const STATUS_KEY: Record<string, string> = { above: "status_above", below: "status_below", around: "status_around", not_enough: "status_mixed" };
 const STATUS_ICON: Record<string, any> = { above: "arrow-up-right", below: "arrow-down-right", around: "minus", not_enough: "help-circle" };
@@ -35,6 +36,9 @@ export default function Progress() {
 
   return (
     <Screen>
+      {(prog?.month_checkin_count ?? 0) === 0 ? (
+        <View style={styles.emptyMark} pointerEvents="none"><Logo size={120} /></View>
+      ) : null}
       <ScrollView contentContainerStyle={[styles.wrap, { paddingBottom: bottomPad }]} showsVerticalScrollIndicator={false}>
         <Display style={styles.h}>{t("tab_progress")}</Display>
 
@@ -153,6 +157,7 @@ function BarChart({ series, max, color }: { series?: any[]; max: number; color: 
 }
 
 const makeStyles = (colors: any) => StyleSheet.create({
+  emptyMark: { position: "absolute", top: "38%", left: 0, right: 0, alignItems: "center", opacity: 0.06 },
   wrap: { paddingHorizontal: spacing.xl, paddingTop: spacing.md, paddingBottom: 100 },
   h: { fontSize: 28 },
   section: { marginTop: spacing.xl, fontSize: T.xl },

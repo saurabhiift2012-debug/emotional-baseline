@@ -7,6 +7,7 @@ import { useApp } from "@/src/AppContext";
 import { api } from "@/src/api";
 import { profileFor, availabilitySignal } from "@/src/psychologistProfiles";
 import { PsychologistAvatar } from "@/src/PsychologistAvatar";
+import { Logo } from "@/src/Logo";
 import { Screen, Display, AppText, Card, Loading, PrimaryButton, spacing, radius, T, useTheme, useThemedStyles } from "@/src/ui";
 import { RazorpayCheckout, RzpOrder, RzpSuccess } from "@/src/RazorpayCheckout";
 
@@ -74,6 +75,8 @@ export default function PsychologistDetail() {
     return (
       <Screen>
         <ScrollView contentContainerStyle={styles.confirmWrap}>
+          <Logo size={40} />
+          <View style={{ height: spacing.lg }} />
           <PsychologistAvatar photo={prof.photo} size={88} />
           <Display style={styles.confirmTitle}>
             {confirmed.psychologist_name} {t("will_call_you_at")} {confirmed.slot_label}

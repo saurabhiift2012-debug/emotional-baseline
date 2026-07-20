@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from "react";
-import { View, StyleSheet, ScrollView, Pressable, Image } from "react-native";
+import { View, StyleSheet, ScrollView, Pressable } from "react-native";
 import { useFocusEffect } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -8,6 +8,7 @@ import { api } from "@/src/api";
 import { moodByKey, GROUP_TINT } from "@/src/moods";
 import { MoodEmoji } from "@/src/MoodEmoji";
 import { Screen, Display, AppText, Card, SectionTitle, Loading, ConfidenceBadge, spacing, radius, T, useTheme, useThemedStyles } from "@/src/ui";
+import { Logo } from "@/src/Logo";
 import { useTabBarPadding } from "@/src/GlassTabBar";
 
 export default function Insights() {
@@ -102,7 +103,7 @@ export default function Insights() {
 
         {total === 0 ? (
           <View style={styles.empty}>
-            <Image source={{ uri: "https://images.pexels.com/photos/8071781/pexels-photo-8071781.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940" }} style={styles.emptyImg} />
+            <View style={styles.emptyMark}><Logo size={96} /></View>
             <AppText style={styles.emptyText}>{t("insights_empty")}</AppText>
             {data?.checkin_count != null && <AppText style={styles.count}>{data.checkin_count} check-ins so far</AppText>}
           </View>
@@ -147,7 +148,7 @@ const makeStyles = (colors: any) => StyleSheet.create({
   fbText: { color: colors.onSurfaceSecondary, fontSize: T.sm, fontWeight: "500" },
   fbTextActive: { color: colors.onSurface },
   empty: { alignItems: "center", marginTop: spacing["3xl"] },
-  emptyImg: { width: 200, height: 140, borderRadius: radius.lg, marginBottom: spacing.xl },
+  emptyMark: { opacity: 0.14, marginBottom: spacing.xl },
   emptyText: { textAlign: "center", color: colors.onSurfaceSecondary, fontSize: T.lg, lineHeight: 24 },
   count: { marginTop: spacing.md, color: colors.onSurfaceSecondary, fontSize: T.sm },
   disclaimer: { fontSize: T.sm, color: colors.onSurfaceSecondary, marginTop: spacing.xl, fontStyle: "italic", lineHeight: 18 },

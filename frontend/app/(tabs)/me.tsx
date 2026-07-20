@@ -5,10 +5,12 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
+import Constants from "expo-constants";
 import { useApp } from "@/src/AppContext";
 import { api } from "@/src/api";
 import { moodByKey } from "@/src/moods";
-import { Screen, Display, AppText, Card, SectionTitle, spacing, radius, T, useTheme, useThemedStyles } from "@/src/ui";
+import { Logo } from "@/src/Logo";
+import { Screen, Display, AppText, Card, SectionTitle, spacing, radius, font, T, useTheme, useThemedStyles } from "@/src/ui";
 import { useTabBarPadding } from "@/src/GlassTabBar";
 import { ThemePref } from "@/src/ThemeContext";
 
@@ -117,6 +119,16 @@ export default function Me() {
         <ActionRow icon="user-x" label={t("delete_account")} onPress={deleteAccount} danger testID="delete-account" />
         <ActionRow icon="log-out" label={t("log_out")} onPress={doLogout} testID="logout" />
 
+        {/* About — the logo's standard resting place */}
+        <SectionTitle style={styles.section}>{t("about")}</SectionTitle>
+        <Card style={styles.aboutCard}>
+          <Logo size={40} />
+          <View style={{ marginLeft: spacing.md }}>
+            <AppText style={styles.aboutName}>TherapiShots</AppText>
+            <AppText style={styles.aboutVersion}>{t("version")} {Constants.expoConfig?.version || "1.0.0"}</AppText>
+          </View>
+        </Card>
+
         <AppText style={styles.note}>{t("not_medical")}</AppText>
         <View style={{ height: spacing.xl }} />
       </ScrollView>
@@ -156,7 +168,9 @@ function buildExportHtml(data: any, moods: any[], lang: "en" | "hi") {
     th { text-align: left; background: #F2EBE1; padding: 8px; }
     td { padding: 8px; border-bottom: 1px solid #Eee6d6; vertical-align: top; }
     .foot { margin-top: 24px; color: #6B5C47; font-size: 11px; font-style: italic; }
+    .watermark { position: fixed; bottom: 16px; right: 20px; color: #3D4F7C; opacity: 0.5; font-size: 12px; font-weight: 700; letter-spacing: 0.3px; }
   </style></head><body>
+    <div class="watermark">🌿 TherapiShots</div>
     <h1>TherapiShots — Your Data Export</h1>
     <p class="sub">Small Steps Today, Better Tomorrow</p>
     <div class="meta">
@@ -194,4 +208,7 @@ const makeStyles = (colors: any) => StyleSheet.create({
   note: { fontSize: T.sm, color: colors.onSurfaceSecondary, marginTop: spacing.md, lineHeight: 18, fontStyle: "italic" },
   action: { flexDirection: "row", alignItems: "center", gap: spacing.md, backgroundColor: colors.surfaceSecondary, borderRadius: radius.md, padding: spacing.lg, marginBottom: spacing.md },
   actionLabel: { flex: 1, fontSize: T.lg, color: colors.onSurface },
+  aboutCard: { flexDirection: "row", alignItems: "center" },
+  aboutName: { fontFamily: font.display, fontSize: T.xl, color: colors.onSurface, fontWeight: "700" },
+  aboutVersion: { fontSize: T.sm, color: colors.onSurfaceSecondary, marginTop: 2 },
 });

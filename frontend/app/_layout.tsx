@@ -1,7 +1,8 @@
 import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { View, Text, Pressable, StyleSheet, LogBox } from "react-native";
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, runOnJS } from "react-native-reanimated";
 import { StatusBar } from "expo-status-bar";
 import { Feather } from "@expo/vector-icons";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -13,6 +14,7 @@ import { useIconFonts } from "@/src/hooks/use-icon-fonts";
 import { AppProvider, useApp } from "@/src/AppContext";
 import { ThemeProvider, useTheme } from "@/src/ThemeContext";
 import { MoodGate } from "@/src/MoodGate";
+import { Logo } from "@/src/Logo";
 
 LogBox.ignoreAllLogs(true);
 SplashScreen.preventAutoHideAsync();
@@ -41,6 +43,25 @@ function UrgentHelpLink() {
   );
 }
 
+function BrandSplash() {
+  const { colors } = useTheme();
+  const [gone, setGone] = useState(false);
+  const opacity = useSharedValue(1);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      opacity.value = withTiming(0, { duration: 500 }, (fin) => { if (fin) runOnJS(setGone)(true); });
+    }, 850);
+    return () => clearTimeout(timer);
+  }, []);
+  const style = useAnimatedStyle(() => ({ opacity: opacity.value }));
+  if (gone) return null;
+  return (
+    <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.splash, { backgroundColor: colors.surface }, style]}>
+      <Logo size={128} />
+    </Animated.View>
+  );
+}
+
 function ThemedStack() {
   const { colors, scheme } = useTheme();
   return (
@@ -53,6 +74,7 @@ function ThemedStack() {
       </Stack>
       <UrgentHelpLink />
       <MoodGate />
+      <BrandSplash />
     </View>
   );
 }
@@ -105,4 +127,5 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
   },
   pillText: { color: "#FFFFFF", fontWeight: "700", fontSize: 11 },
+  splash: { alignItems: "center", justifyContent: "center", zIndex: 200 },
 });
