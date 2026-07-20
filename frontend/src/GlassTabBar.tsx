@@ -7,7 +7,7 @@ import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { useApp } from "./AppContext";
-import { AppText, font } from "./ui";
+import { AppText, font, spacing, useTheme } from "./ui";
 
 const ICONS: Record<string, any> = {
   index: "sun",
@@ -22,8 +22,17 @@ const BAR_H = 60;         // capsule height
 const RADIUS = BAR_H / 2; // full capsule
 const PILL_INSET = 6;     // gap between the handle and item edges
 const LENS_H = BAR_H - 12;
+const BAR_GAP = 8;        // gap between the pill and the top of the system-nav inset
+const FADE_H = 30;        // soft fade above the opaque band
 // damped, not bouncy
 const SPRING = { damping: 18, stiffness: 200, mass: 0.9 };
+
+// Total vertical space the floating nav occupies. Screens use this for their
+// bottom scroll padding so the last row always clears the bar + system inset.
+export function useTabBarPadding() {
+  const insets = useSafeAreaInsets();
+  return insets.bottom + BAR_GAP + BAR_H + spacing.xl;
+}
 
 // Opaque, grounded palette (no page show-through).
 const PLATE_IOS = "#EDEEF4";      // opaque backing plate (iOS glass sits on this)
@@ -47,6 +56,7 @@ function TabIcon({ name, focused, color }: { name: any; focused: boolean; color:
 
 export function GlassTabBar({ state, navigation }: BottomTabBarProps) {
   const { t } = useApp();
+  const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
 
@@ -130,8 +140,24 @@ export function GlassTabBar({ state, navigation }: BottomTabBarProps) {
     onPanResponderTerminate: onDragEnd,
   }), [state.index, itemW, n, lensW, minX, maxX]);
 
+  const cream = colors.surface;
+  const bandH = insets.bottom + BAR_GAP + BAR_H + FADE_H;
+  const fadeRatio = FADE_H / bandH;
+
   return (
-    <View style={[styles.outer, { left: SIDE, right: SIDE, bottom: insets.bottom + 8 }]} testID="glass-tabbar" pointerEvents="box-none">
+    <View style={styles.host} pointerEvents="box-none">
+      {/* Opaque background band + soft fade: fills below/beside the pill down to the
+          bottom so no page content shows through. On Android the system nav icons/gesture
+          bar are drawn by the OS on top and remain visible/tappable; the app pill sits
+          above the bottom inset. */}
+      <View pointerEvents="none" style={[styles.band, { height: bandH }]}>
+        <LinearGradient
+          colors={[cream + "00", cream, cream]}
+          locations={[0, fadeRatio, 1]}
+          style={StyleSheet.absoluteFill}
+        />
+      </View>
+      <View style={[styles.outer, { left: SIDE, right: SIDE, bottom: insets.bottom + BAR_GAP }]} testID="glass-tabbar" pointerEvents="box-none">
       <View style={[styles.plate, { height: BAR_H, borderRadius: RADIUS, backgroundColor: plateColor }]}>
         {/* iOS: frosted-glass sheen painted ON the opaque plate (never on the page). */}
         {groundedGlass ? (
@@ -185,11 +211,24 @@ export function GlassTabBar({ state, navigation }: BottomTabBarProps) {
           })}
         </View>
       </View>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  host: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  band: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
   outer: {
     position: "absolute",
     // soft floating shadow (sits on the non-overflow outer view so it isn't clipped)

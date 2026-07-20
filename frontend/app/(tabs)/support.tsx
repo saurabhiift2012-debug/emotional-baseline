@@ -6,9 +6,11 @@ import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, wit
 import { useApp } from "@/src/AppContext";
 import { CrisisSheet } from "@/src/CrisisSheet";
 import { Screen, Display, AppText, Card, SectionTitle, spacing, radius, T, useTheme, useThemedStyles } from "@/src/ui";
+import { useTabBarPadding } from "@/src/GlassTabBar";
 
 export default function Support() {
   const { t } = useApp();
+  const bottomPad = useTabBarPadding();
   const { colors } = useTheme();
   const styles = useThemedStyles(makeStyles);
   const router = useRouter();
@@ -38,7 +40,7 @@ export default function Support() {
 
   return (
     <Screen>
-      <ScrollView contentContainerStyle={styles.wrap} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[styles.wrap, { paddingBottom: bottomPad }]} showsVerticalScrollIndicator={false}>
         <Display style={styles.h}>{t("support_title")}</Display>
 
         {/* Breathing */}

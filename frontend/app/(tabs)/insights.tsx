@@ -8,9 +8,11 @@ import { api } from "@/src/api";
 import { moodByKey, GROUP_TINT } from "@/src/moods";
 import { MoodEmoji } from "@/src/MoodEmoji";
 import { Screen, Display, AppText, Card, SectionTitle, Loading, ConfidenceBadge, spacing, radius, T, useTheme, useThemedStyles } from "@/src/ui";
+import { useTabBarPadding } from "@/src/GlassTabBar";
 
 export default function Insights() {
   const { t, lang, moods } = useApp();
+  const bottomPad = useTabBarPadding();
   const { colors } = useTheme();
   const styles = useThemedStyles(makeStyles);
   const [data, setData] = useState<any>(null);
@@ -64,7 +66,7 @@ export default function Insights() {
 
   return (
     <Screen>
-      <ScrollView contentContainerStyle={styles.wrap} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[styles.wrap, { paddingBottom: bottomPad }]} showsVerticalScrollIndicator={false}>
         <AppText style={styles.eyebrow}>{t("tab_insights")}</AppText>
         <View style={styles.qRow}>
           <Display style={styles.q}>{t("insights_q")}</Display>

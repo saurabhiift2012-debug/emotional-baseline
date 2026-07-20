@@ -6,12 +6,14 @@ import { useApp } from "@/src/AppContext";
 import { api } from "@/src/api";
 import { GROUP_COLOR } from "@/src/moods";
 import { Screen, Display, AppText, Card, SectionTitle, Loading, spacing, radius, T, useTheme, useThemedStyles } from "@/src/ui";
+import { useTabBarPadding } from "@/src/GlassTabBar";
 
 const STATUS_KEY: Record<string, string> = { above: "status_above", below: "status_below", around: "status_around", not_enough: "status_mixed" };
 const STATUS_ICON: Record<string, any> = { above: "arrow-up-right", below: "arrow-down-right", around: "minus", not_enough: "help-circle" };
 
 export default function Progress() {
   const { t } = useApp();
+  const bottomPad = useTabBarPadding();
   const { colors } = useTheme();
   const styles = useThemedStyles(makeStyles);
   const router = useRouter();
@@ -33,7 +35,7 @@ export default function Progress() {
 
   return (
     <Screen>
-      <ScrollView contentContainerStyle={styles.wrap} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[styles.wrap, { paddingBottom: bottomPad }]} showsVerticalScrollIndicator={false}>
         <Display style={styles.h}>{t("tab_progress")}</Display>
 
         {/* Wellbeing Pulse */}

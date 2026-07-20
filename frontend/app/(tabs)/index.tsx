@@ -10,9 +10,11 @@ import { MoodSelector } from "@/src/MoodSelector";
 import { MoodEmoji } from "@/src/MoodEmoji";
 import { Logo } from "@/src/Logo";
 import { Screen, Display, AppText, Card, SectionTitle, Loading, spacing, radius, font, T, useTheme, useThemedStyles } from "@/src/ui";
+import { useTabBarPadding } from "@/src/GlassTabBar";
 
 export default function Today() {
   const { t, lang, moods, user } = useApp();
+  const bottomPad = useTabBarPadding();
   const { colors } = useTheme();
   const styles = useThemedStyles(makeStyles);
   const router = useRouter();
@@ -65,7 +67,7 @@ export default function Today() {
   return (
     <Screen>
       <ScrollView
-        contentContainerStyle={styles.wrap}
+        contentContainerStyle={[styles.wrap, { paddingBottom: bottomPad }]}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={false} onRefresh={load} tintColor={colors.amber} />}
       >

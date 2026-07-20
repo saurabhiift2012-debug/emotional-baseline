@@ -9,6 +9,7 @@ import { useApp } from "@/src/AppContext";
 import { api } from "@/src/api";
 import { moodByKey } from "@/src/moods";
 import { Screen, Display, AppText, Card, SectionTitle, spacing, radius, T, useTheme, useThemedStyles } from "@/src/ui";
+import { useTabBarPadding } from "@/src/GlassTabBar";
 import { ThemePref } from "@/src/ThemeContext";
 
 const CONSENTS = [
@@ -17,6 +18,7 @@ const CONSENTS = [
 
 export default function Me() {
   const { t, lang, user, moods, setLang, logout, updateConsents } = useApp();
+  const bottomPad = useTabBarPadding();
   const { colors, pref, setPref } = useTheme();
   const styles = useThemedStyles(makeStyles);
   const router = useRouter();
@@ -54,7 +56,7 @@ export default function Me() {
 
   return (
     <Screen>
-      <ScrollView contentContainerStyle={styles.wrap} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[styles.wrap, { paddingBottom: bottomPad }]} showsVerticalScrollIndicator={false}>
         <Display style={styles.h}>{user?.name}</Display>
         <AppText style={styles.email}>{user?.phone}{user?.email ? ` · ${user.email}` : ""}</AppText>
 
