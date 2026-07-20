@@ -75,3 +75,16 @@ how I feel?" via a DETERMINISTIC pattern engine. Never diagnoses. Private by def
 - TherapiShots logo applied to app icon/splash/adaptive/favicon + onboarding/login/register.
 - Deferred: P1 security hardening (fail-closed JWT, CORS restriction, ObjectId guards,
   remove unused email/password routes).
+
+## Session update 2026-06-20 (8-Point Clinical Review + Security Hardening) — DONE
+- Fixed broken Home (index.tsx): removed dead "One small step" card + <CrisisSheet> refs.
+- Tiered support wired: escalate tier shows self-harm screening (Yes→/crisis, No→Book 15-min call);
+  gentle tier shows low-key "Talk to a psychologist (15 min)" link. No app-initiated coping steps.
+- Check-in: low moods show "Anything weighing on you? (optional)"; removed "Take a small step" option.
+- Progress: Mood trend hidden behind "Show more detail" toggle; Feel Map primary; no numeric 0-6 values.
+- Added i18n keys: no, show_more_detail, hide_detail.
+- P1 Security hardening DONE: JWT_SECRET enforced from env (RuntimeError if missing, no fallback);
+  get_current_user rejects invalid/garbage tokens + malformed ObjectId sub → 401 (bson InvalidId guard);
+  removed unused email/password /auth/register + /auth/login routes (now 404) + RegisterIn/LoginIn/
+  hash_password/verify_password/bcrypt/EmailStr dead code. CORS left permissive per user (lock at deploy).
+- Verified: 16/16 backend pytest green + full frontend Playwright flows (iteration_12).
