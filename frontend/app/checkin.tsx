@@ -7,7 +7,7 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useApp } from "@/src/AppContext";
 import { api } from "@/src/api";
-import { MoodSlider } from "@/src/MoodSlider";
+import { MoodSelector } from "@/src/MoodSelector";
 import { CONTEXT_TAGS, moodByKey } from "@/src/moods";
 import { Screen, Display, AppText, PrimaryButton, GhostButton, IconChip, spacing, radius, font, T, useTheme, useThemedStyles } from "@/src/ui";
 
@@ -72,7 +72,7 @@ export default function CheckIn() {
           <Display style={styles.q}>{t("pick_mood")}</Display>
           <AppText style={styles.sub}>{t("thanks_checkin")}</AppText>
           <View style={{ height: spacing.xl }} />
-          <MoodSlider moods={moods} value={mood} onChange={setMood} lang={lang} />
+          <MoodSelector moods={moods} value={mood} onChange={setMood} lang={lang} />
         </ScrollView>
       )}
 

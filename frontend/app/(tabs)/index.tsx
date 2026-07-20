@@ -6,7 +6,7 @@ import * as Haptics from "expo-haptics";
 import { useApp } from "@/src/AppContext";
 import { api } from "@/src/api";
 import { moodByKey } from "@/src/moods";
-import { MoodSlider } from "@/src/MoodSlider";
+import { MoodSelector } from "@/src/MoodSelector";
 import { MoodEmoji } from "@/src/MoodEmoji";
 import { Logo } from "@/src/Logo";
 import { Screen, Display, AppText, Card, SectionTitle, Loading, spacing, radius, font, T, useTheme, useThemedStyles } from "@/src/ui";
@@ -88,7 +88,7 @@ export default function Today() {
             </View>
           ) : null}
           <View style={{ height: spacing.md }} />
-          <MoodSlider moods={moods} value={null} onChange={quickLog} lang={lang} pad={spacing.xl * 2 + spacing.lg * 2} />
+          <MoodSelector moods={moods} value={null} onChange={quickLog} lang={lang} pad={spacing.xl * 2 + spacing.lg * 2} />
           <Pressable testID="add-detail-button" onPress={() => router.push("/checkin")} style={styles.addDetail}>
             <Feather name="edit-3" size={16} color={colors.indigo} />
             <AppText style={styles.addDetailText}>{t("add_detail")}</AppText>
