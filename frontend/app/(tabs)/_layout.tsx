@@ -6,6 +6,7 @@ export default function TabsLayout() {
   return (
     <Tabs
       tabBar={(props) => <GlassTabBar {...props} />}
+      detachInactiveScreens={false}
       screenOptions={{ headerShown: false, animation: "fade" }}
     >
       <Tabs.Screen name="index" />
