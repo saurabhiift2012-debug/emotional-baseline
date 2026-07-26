@@ -583,9 +583,22 @@ def _send_otp_sms(phone: str):
     try:
         _twilio_client.verify.v2.services(TWILIO_VERIFY_SERVICE_SID) \
             .verifications.create(to=phone, channel="sms")
+    except HTTPException:
+        raise
     except Exception as e:
+        code = getattr(e, "code", None)
         logger.warning(f"Twilio send failed for {phone}: {e}")
-        raise HTTPException(status_code=502, detail="Could not send verification code. Please try again.")
+        if code == 21608:
+            # Trial Twilio account: recipient number must be verified in the console.
+            raise HTTPException(status_code=400, detail=(
+                "We couldn't text a code to this number yet. Our SMS line is on a trial plan, "
+                "so it can only message numbers verified in Twilio. Please verify this number in "
+                "the Twilio console (or upgrade the Twilio account) and try again."))
+        if code in (21211, 21214, 60200):
+            raise HTTPException(status_code=400, detail="That mobile number looks invalid. Please check it and try again.")
+        if code == 60203:
+            raise HTTPException(status_code=429, detail="Too many code requests for this number. Please wait a little while and try again.")
+        raise HTTPException(status_code=400, detail="We couldn't send the verification code right now. Please try again in a moment.")
 
 
 def _check_otp_sms(phone: str, code: str) -> bool:
