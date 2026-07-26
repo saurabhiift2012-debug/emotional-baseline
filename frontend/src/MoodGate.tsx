@@ -31,7 +31,7 @@ export function MoodGate() {
   // Never gate the auth flow or a crisis moment.
   const suppressed =
     seg.includes("crisis") || seg.includes("login") || seg.includes("register") ||
-    seg.includes("onboarding") || seg === "";
+    seg.includes("onboarding") || seg.includes("welcome") || seg === "";
 
   // Show on cold start / immediately after authentication.
   useEffect(() => {

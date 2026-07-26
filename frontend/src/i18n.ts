@@ -337,6 +337,11 @@ export const STR: Dict = {
   low_prompt_book_slot: { en: "Book this 15-min call", hi: "यह 15-मिनट की कॉल बुक करें" },
   low_prompt_see_slots: { en: "See available times", hi: "उपलब्ध समय देखें" },
   low_prompt_not_now: { en: "Maybe later", hi: "शायद बाद में" },
+
+  // post-registration welcome
+  welcome_congrats_title: { en: "Way to go!", hi: "शाबाश!" },
+  welcome_congrats_body: { en: "Welcome to TherapiShots, a safe place with real human connect & self discovery.", hi: "TherapiShots में आपका स्वागत है — वास्तविक मानवीय जुड़ाव और आत्म-खोज का एक सुरक्षित स्थान।" },
+  welcome_continue: { en: "Let's begin", hi: "चलिए शुरू करें" },
 };
 
 export function makeT(lang: Lang) {

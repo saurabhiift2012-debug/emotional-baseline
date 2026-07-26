@@ -4,11 +4,43 @@ import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { useApp } from "@/src/AppContext";
 import { Logo } from "@/src/Logo";
 import { Screen, Display, AppText, PrimaryButton, GhostButton, spacing, radius, font, T, useTheme, useThemedStyles } from "@/src/ui";
 
 const RELATIONSHIPS = ["parent", "spouse", "partner", "sibling", "child", "friend", "relative", "other"];
+
+// ---- Date-of-birth helpers (DD-MM-YYYY) --------------------------------
+const onlyDigits = (s: string) => (s || "").replace(/\D/g, "");
+
+// Auto-inserts the "-" separators as the user types digits only.
+function maskDOB(input: string): string {
+  const d = onlyDigits(input).slice(0, 8);
+  const parts: string[] = [d.slice(0, 2)];
+  if (d.length > 2) parts.push(d.slice(2, 4));
+  if (d.length > 4) parts.push(d.slice(4, 8));
+  return parts.filter(Boolean).join("-");
+}
+
+function parseDDMMYYYY(s: string): Date | null {
+  const m = /^(\d{2})-(\d{2})-(\d{4})$/.exec((s || "").trim());
+  if (!m) return null;
+  const dd = +m[1], mm = +m[2], yyyy = +m[3];
+  if (mm < 1 || mm > 12 || dd < 1 || dd > 31 || yyyy < 1900) return null;
+  const d = new Date(yyyy, mm - 1, dd);
+  if (d.getFullYear() !== yyyy || d.getMonth() !== mm - 1 || d.getDate() !== dd) return null;
+  if (d > new Date()) return null; // no future dates
+  return d;
+}
+
+const fmtDDMMYYYY = (d: Date): string =>
+  `${String(d.getDate()).padStart(2, "0")}-${String(d.getMonth() + 1).padStart(2, "0")}-${d.getFullYear()}`;
+
+function dobToISO(s: string): string {
+  const d = parseDDMMYYYY(s);
+  return d ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}` : "";
+}
 
 export default function Register() {
   const { t, lang, requestOtp, verifyOtp } = useApp();
@@ -60,7 +92,8 @@ export default function Register() {
     setErr(null); setBusy(true);
     try {
       await verifyOtp(phone.trim(), code.trim());
-      router.replace("/(tabs)");
+      // New users see a warm welcome, then the mood check-in.
+      router.replace("/welcome");
     } catch (e: any) { setErr(e.message || "Verification failed"); }
     finally { setBusy(false); }
   };
@@ -84,10 +117,12 @@ export default function Register() {
 
             <AppText style={styles.label}>{t("dob")}</AppText>
             <View style={styles.dobRow}>
-              <TextInput testID="register-dob-input" style={[styles.input, { flex: 1 }]} value={dob} onChangeText={setDob} placeholder="DD-MM-YYYY" placeholderTextColor={colors.onSurfaceSecondary} autoCapitalize="none" keyboardType="number-pad" />
-              <Pressable testID="register-dob-calendar" onPress={() => setShowDob(true)} style={styles.calBtn}>
-                <Feather name="calendar" size={20} color={colors.indigo} />
-              </Pressable>
+              <TextInput testID="register-dob-input" style={[styles.input, { flex: 1 }]} value={dob} onChangeText={(txt) => setDob(maskDOB(txt))} placeholder="DD-MM-YYYY" placeholderTextColor={colors.onSurfaceSecondary} autoCapitalize="none" keyboardType="number-pad" maxLength={10} />
+              {Platform.OS !== "web" ? (
+                <Pressable testID="register-dob-calendar" onPress={() => setShowDob(true)} style={styles.calBtn}>
+                  <Feather name="calendar" size={20} color={colors.indigo} />
+                </Pressable>
+              ) : null}
             </View>
             {showDob && Platform.OS !== "web" ? (
               <>
