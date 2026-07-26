@@ -25,9 +25,12 @@ function UrgentHelpLink() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const segments = useSegments();
-  // Hide on the crisis screen and the auth/onboarding flow.
-  const seg = segments.join("/");
-  if (seg.includes("crisis") || seg.includes("login") || seg.includes("register") || seg.includes("onboarding") || seg === "") {
+  // Show ONLY on the Today, Insights, Progress and Me tabs.
+  // (Hidden on Support — it has its own emergency section — and everywhere else.)
+  const inTabs = segments.includes("(tabs)");
+  const last = segments[segments.length - 1] || "";
+  const allowed = inTabs && ["(tabs)", "index", "insights", "progress", "me"].includes(last);
+  if (!allowed) {
     return null;
   }
   return (

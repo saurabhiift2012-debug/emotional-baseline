@@ -127,12 +127,13 @@ export default function Today() {
 
         {/* Neutral state — keep a calm, always-available way to talk to a psychologist at the top */}
         {(!data?.support_tier || data?.support_tier === "none") && (
-          <Card style={{ marginTop: spacing.lg }} testID="support-link-card">
-            <Pressable testID="talk-link" onPress={() => router.push("/psychologists")} style={styles.gentleLink}>
-              <Feather name="phone-call" size={14} color={colors.indigo} />
-              <AppText style={styles.gentleLinkText}>{t("talk_15_min")}</AppText>
-            </Pressable>
-          </Card>
+          <Pressable testID="talk-link" onPress={() => router.push("/psychologists")} style={{ marginTop: spacing.lg }}>
+            <Card tint={colors.tintLav} style={styles.talkChip} testID="support-link-card">
+              <View style={styles.talkChipIcon}><Feather name="phone-call" size={16} color={colors.indigo} /></View>
+              <AppText style={styles.talkChipText}>{t("talk_15_min")}</AppText>
+              <Feather name="chevron-right" size={18} color={colors.indigo} />
+            </Card>
+          </Pressable>
         )}
 
         {/* Observation (moved up) — "something you may want to notice", below the name */}
@@ -273,6 +274,9 @@ const makeStyles = (colors: any) => StyleSheet.create({
   screenBtnText: { color: colors.onSurface, fontWeight: "600", fontSize: T.base },
   gentleLink: { flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start" },
   gentleLinkText: { color: colors.indigo, fontWeight: "600", fontSize: T.base },
+  talkChip: { flexDirection: "row", alignItems: "center", gap: spacing.md, paddingVertical: spacing.md },
+  talkChipIcon: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" },
+  talkChipText: { flex: 1, color: colors.indigo, fontWeight: "700", fontSize: T.lg },
   bannerRow: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   bannerQ: { fontSize: 22, lineHeight: 28 },
   bannerCta: { width: 48, height: 48, borderRadius: 24, backgroundColor: colors.amber, alignItems: "center", justifyContent: "center" },
