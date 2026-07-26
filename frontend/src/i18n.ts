@@ -342,6 +342,21 @@ export const STR: Dict = {
   welcome_congrats_title: { en: "Way to go!", hi: "शाबाश!" },
   welcome_congrats_body: { en: "Welcome to TherapiShots, a safe place with real human connect & self discovery.", hi: "TherapiShots में आपका स्वागत है — वास्तविक मानवीय जुड़ाव और आत्म-खोज का एक सुरक्षित स्थान।" },
   welcome_continue: { en: "Let's begin", hi: "चलिए शुरू करें" },
+
+  // registration consents (first-time)
+  consent_heading: { en: "Before you continue", hi: "आगे बढ़ने से पहले" },
+  consent_sub: { en: "Please confirm each of the following to create your account.", hi: "अपना खाता बनाने के लिए कृपया नीचे दिए गए प्रत्येक बिंदु की पुष्टि करें।" },
+  consent_age18: { en: "I am 18 years or older", hi: "मैं 18 वर्ष या उससे अधिक का हूँ" },
+  consent_terms: { en: "I accept the Terms of Use", hi: "मैं उपयोग की शर्तें स्वीकार करता/करती हूँ" },
+  consent_privacy: { en: "I accept the Privacy Policy", hi: "मैं गोपनीयता नीति स्वीकार करता/करती हूँ" },
+  consent_not_medical: { en: "I understand TherapiShots is not a medical or emergency service", hi: "मैं समझता/समझती हूँ कि TherapiShots कोई चिकित्सा या आपातकालीन सेवा नहीं है" },
+  consent_data: { en: "I consent to the processing of my personal and mood data", hi: "मैं अपने व्यक्तिगत और मूड डेटा के प्रसंस्करण के लिए सहमति देता/देती हूँ" },
+  consent_read_terms: { en: "Read Terms of Use", hi: "उपयोग की शर्तें पढ़ें" },
+  consent_read_privacy: { en: "Read Privacy Policy", hi: "गोपनीयता नीति पढ़ें" },
+  consent_i_agree: { en: "I agree", hi: "मैं सहमत हूँ" },
+  consent_scroll_hint: { en: "Scroll to the bottom to agree", hi: "सहमत होने के लिए नीचे तक स्क्रॉल करें" },
+  terms_title: { en: "Terms of Use", hi: "उपयोग की शर्तें" },
+  required_note: { en: "* Required", hi: "* आवश्यक" },
 };
 
 export function makeT(lang: Lang) {

@@ -626,6 +626,7 @@ class RequestOtpIn(BaseModel):
     emergency_contact_relationship: Optional[str] = None
     emergency_contact_phone: Optional[str] = None
     agreement_accepted: Optional[bool] = None
+    consents: Optional[dict] = None
 
 
 class VerifyOtpIn(BaseModel):
@@ -663,6 +664,7 @@ async def request_otp(body: RequestOtpIn):
                 "accepted": True,
                 "version": AGREEMENT_VERSION,
                 "accepted_at": datetime.now(timezone.utc).isoformat(),
+                "consents": body.consents or {},
             },
         }
     else:  # login

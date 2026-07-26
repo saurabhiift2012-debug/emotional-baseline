@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { View, StyleSheet, TextInput, Pressable, Modal, ScrollView, Platform } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
@@ -7,6 +8,7 @@ import * as Haptics from "expo-haptics";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useApp } from "@/src/AppContext";
 import { Logo } from "@/src/Logo";
+import { TERMS_OF_USE, TERMS_VERSION } from "@/src/legal";
 import { Screen, Display, AppText, PrimaryButton, GhostButton, spacing, radius, font, T, useTheme, useThemedStyles } from "@/src/ui";
 
 const RELATIONSHIPS = ["parent", "spouse", "partner", "sibling", "child", "friend", "relative", "other"];
@@ -55,14 +57,20 @@ export default function Register() {
   const [ecName, setEcName] = useState("");
   const [ecPhone, setEcPhone] = useState("");
   const [relationship, setRelationship] = useState("");
-  const [agreed, setAgreed] = useState(false);
+  const [consents, setConsents] = useState({ age18: false, terms: false, privacy: false, notMedical: false, dataProcessing: false });
   const [showRel, setShowRel] = useState(false);
   const [showDob, setShowDob] = useState(false);
-  const [showAgreement, setShowAgreement] = useState(false);
+  const [showTerms, setShowTerms] = useState(false);
   const [code, setCode] = useState("");
   const [devCode, setDevCode] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  const allConsented = Object.values(consents).every(Boolean);
+  const toggle = (k: keyof typeof consents) => {
+    Haptics.selectionAsync();
+    setConsents((c) => ({ ...c, [k]: !c[k] }));
+  };
 
   const sendCode = async () => {
     setErr(null);
@@ -71,7 +79,7 @@ export default function Register() {
       setErr(t("fill_required")); return;
     }
     if (!parseDDMMYYYY(dob.trim())) { setErr(t("fill_required")); return; }
-    if (!agreed) { setErr(t("must_agree")); return; }
+    if (!allConsented) { setErr(t("must_agree")); return; }
     setBusy(true);
     try {
       const res = await requestOtp({
@@ -80,7 +88,8 @@ export default function Register() {
         emergency_contact_name: ecName.trim(),
         emergency_contact_relationship: relationship,
         emergency_contact_phone: ecPhone.trim(),
-        agreement_accepted: agreed,
+        agreement_accepted: allConsented,
+        consents: { ...consents, terms_version: TERMS_VERSION },
       });
       setDevCode(res.dev_code || null);
       setStep("otp");
@@ -109,13 +118,13 @@ export default function Register() {
             <View style={{ alignItems: "center", marginBottom: spacing.lg }}><Logo size={60} /></View>
             <Display style={styles.title}>{t("create_account")}</Display>
 
-            <AppText style={styles.label}>{t("name")}</AppText>
+            <AppText style={styles.label}>{t("name")}<AppText style={styles.req}> *</AppText></AppText>
             <TextInput testID="register-name-input" style={styles.input} value={name} onChangeText={setName} placeholder="Riya" placeholderTextColor={colors.onSurfaceSecondary} />
 
-            <AppText style={styles.label}>{t("mobile_number")}</AppText>
+            <AppText style={styles.label}>{t("mobile_number")}<AppText style={styles.req}> *</AppText></AppText>
             <TextInput testID="register-phone-input" style={styles.input} value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholder="+91 98765 43210" placeholderTextColor={colors.onSurfaceSecondary} />
 
-            <AppText style={styles.label}>{t("dob")}</AppText>
+            <AppText style={styles.label}>{t("dob")}<AppText style={styles.req}> *</AppText></AppText>
             <View style={styles.dobRow}>
               <TextInput testID="register-dob-input" style={[styles.input, { flex: 1 }]} value={dob} onChangeText={(txt) => setDob(maskDOB(txt))} placeholder="DD-MM-YYYY" placeholderTextColor={colors.onSurfaceSecondary} autoCapitalize="none" keyboardType="number-pad" maxLength={10} />
               {Platform.OS !== "web" ? (
@@ -152,10 +161,10 @@ export default function Register() {
             <AppText style={styles.sectionHead}>{t("emergency_contact")}</AppText>
             <AppText style={styles.sectionHint}>{t("ec_intro")}</AppText>
 
-            <AppText style={styles.label}>{t("ec_name")}</AppText>
+            <AppText style={styles.label}>{t("ec_name")}<AppText style={styles.req}> *</AppText></AppText>
             <TextInput testID="register-ec-name" style={styles.input} value={ecName} onChangeText={setEcName} placeholder="Riya Sharma" placeholderTextColor={colors.onSurfaceSecondary} />
 
-            <AppText style={styles.label}>{t("ec_relationship")}</AppText>
+            <AppText style={styles.label}>{t("ec_relationship")}<AppText style={styles.req}> *</AppText></AppText>
             <Pressable testID="register-rel-dropdown" onPress={() => setShowRel(true)} style={styles.dropdown}>
               <AppText style={[styles.dropdownText, !relationship && { color: colors.onSurfaceSecondary }]}>
                 {relationship ? t(`rel_${relationship}`) : t("select_relationship")}
@@ -163,20 +172,23 @@ export default function Register() {
               <Feather name="chevron-down" size={20} color={colors.onSurfaceSecondary} />
             </Pressable>
 
-            <AppText style={styles.label}>{t("ec_phone")}</AppText>
+            <AppText style={styles.label}>{t("ec_phone")}<AppText style={styles.req}> *</AppText></AppText>
             <TextInput testID="register-ec-phone" style={styles.input} value={ecPhone} onChangeText={setEcPhone} keyboardType="phone-pad" placeholder="+91 98765 43210" placeholderTextColor={colors.onSurfaceSecondary} />
 
-            {/* Agreement */}
-            <Pressable testID="register-agree-row" onPress={() => setAgreed((v) => { Haptics.selectionAsync(); return !v; })} style={styles.agreeRow}>
-              <View style={[styles.checkbox, agreed && styles.checkboxOn]}>
-                {agreed ? <Feather name="check" size={15} color={colors.onSurfaceInverse} /> : null}
-              </View>
-              <AppText style={styles.agreeText}>{t("agree_checkbox")}</AppText>
-            </Pressable>
-            <Pressable testID="register-read-agreement" onPress={() => setShowAgreement(true)} style={styles.readLink}>
-              <Feather name="file-text" size={14} color={colors.indigo} />
-              <AppText style={styles.readLinkText}>{t("read_agreement")}</AppText>
-            </Pressable>
+            {/* Consents — all mandatory for first-time registration */}
+            <AppText style={styles.sectionHead}>{t("consent_heading")}<AppText style={styles.req}> *</AppText></AppText>
+            <AppText style={styles.sectionHint}>{t("consent_sub")}</AppText>
+
+            <ConsentRow testID="consent-age18" checked={consents.age18} onPress={() => toggle("age18")} label={t("consent_age18")} styles={styles} colors={colors} />
+
+            <ConsentRow testID="consent-terms" checked={consents.terms} onPress={() => toggle("terms")} label={t("consent_terms")} styles={styles} colors={colors}
+              action={<Pressable testID="open-terms" onPress={() => setShowTerms(true)} hitSlop={8}><AppText style={styles.readLinkText}>{t("consent_read_terms")}</AppText></Pressable>} />
+
+            <ConsentRow testID="consent-privacy" checked={consents.privacy} onPress={() => toggle("privacy")} label={t("consent_privacy")} styles={styles} colors={colors} />
+
+            <ConsentRow testID="consent-not-medical" checked={consents.notMedical} onPress={() => toggle("notMedical")} label={t("consent_not_medical")} styles={styles} colors={colors} />
+
+            <ConsentRow testID="consent-data" checked={consents.dataProcessing} onPress={() => toggle("dataProcessing")} label={t("consent_data")} styles={styles} colors={colors} />
 
             {err ? <AppText testID="register-error" style={styles.err}>{err}</AppText> : null}
             <AppText style={styles.note}>{t("not_medical")}</AppText>
@@ -198,18 +210,12 @@ export default function Register() {
               </Pressable>
             </Modal>
 
-            {/* Agreement modal */}
-            <Modal visible={showAgreement} transparent animationType="slide" onRequestClose={() => setShowAgreement(false)}>
-              <View style={styles.agreeBackdrop}>
-                <View style={styles.agreeSheet}>
-                  <Display style={styles.agreeTitle}>{t("agreement_title")}</Display>
-                  <ScrollView style={{ maxHeight: 360 }} contentContainerStyle={{ paddingBottom: spacing.md }} showsVerticalScrollIndicator>
-                    <AppText style={styles.agreeBody}>{t("agreement_body")}</AppText>
-                  </ScrollView>
-                  <PrimaryButton testID="agreement-accept" label={t("agree_checkbox")} onPress={() => { setAgreed(true); setShowAgreement(false); }} />
-                  <GhostButton testID="agreement-close" label={t("dismiss")} onPress={() => setShowAgreement(false)} />
-                </View>
-              </View>
+            {/* Terms of Use reader — scroll to bottom, tap "I agree" to return */}
+            <Modal visible={showTerms} animationType="slide" onRequestClose={() => setShowTerms(false)}>
+              <TermsReader
+                onAgree={() => { setConsents((c) => ({ ...c, terms: true })); setShowTerms(false); }}
+                onClose={() => setShowTerms(false)}
+              />
             </Modal>
           </>
         ) : (
@@ -255,6 +261,65 @@ export function OtpStep({ t, phone, code, setCode, devCode, err, busy, onVerify,
   );
 }
 
+function ConsentRow({ testID, checked, onPress, label, action, styles, colors }: any) {
+  return (
+    <View style={styles.consentRow}>
+      <Pressable testID={testID} onPress={onPress} style={styles.consentTap} hitSlop={6}>
+        <View style={[styles.checkbox, checked && styles.checkboxOn]}>
+          {checked ? <Feather name="check" size={15} color={colors.onSurfaceInverse} /> : null}
+        </View>
+        <AppText style={styles.consentLabel}>{label}</AppText>
+      </Pressable>
+      {action ? <View style={styles.consentAction}>{action}</View> : null}
+    </View>
+  );
+}
+
+function TermsReader({ onAgree, onClose }: { onAgree: () => void; onClose: () => void }) {
+  const { t } = useApp();
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  const insets = useSafeAreaInsets();
+  const [atBottom, setAtBottom] = useState(false);
+  return (
+    <View style={[styles.readerWrap, { paddingTop: insets.top }]}>
+      <View style={styles.readerHeader}>
+        <AppText style={styles.readerTitle}>{t("terms_title")}</AppText>
+        <Pressable testID="terms-close" onPress={onClose} hitSlop={10}>
+          <Feather name="x" size={24} color={colors.onSurface} />
+        </Pressable>
+      </View>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={styles.readerBody}
+        showsVerticalScrollIndicator
+        scrollEventThrottle={80}
+        onScroll={(e) => {
+          const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
+          if (layoutMeasurement.height + contentOffset.y >= contentSize.height - 40) setAtBottom(true);
+        }}
+      >
+        {TERMS_OF_USE.map((s, i) => (
+          <View key={i} style={{ marginBottom: spacing.lg }}>
+            <AppText style={styles.readerH}>{s.h}</AppText>
+            <AppText style={styles.readerP}>{s.b}</AppText>
+          </View>
+        ))}
+        <View style={styles.readerAgreeBox}>
+          <PrimaryButton testID="terms-agree" label={t("consent_i_agree")} onPress={onAgree} />
+        </View>
+      </ScrollView>
+      <View style={[styles.readerFooter, { paddingBottom: insets.bottom + spacing.md }]}>
+        {atBottom ? (
+          <PrimaryButton testID="terms-agree-footer" label={t("consent_i_agree")} onPress={onAgree} />
+        ) : (
+          <AppText style={styles.readerHint}>{t("consent_scroll_hint")}</AppText>
+        )}
+      </View>
+    </View>
+  );
+}
+
 const makeStyles = (colors: any) => StyleSheet.create({
   back: { paddingHorizontal: spacing.xl, paddingTop: spacing.sm, height: 40, justifyContent: "center" },
   wrap: { paddingHorizontal: spacing.xl, paddingTop: spacing.md, paddingBottom: spacing["2xl"] },
@@ -274,6 +339,20 @@ const makeStyles = (colors: any) => StyleSheet.create({
   pickerDoneText: { color: colors.indigo, fontWeight: "700", fontSize: T.base },
   dropdownText: { fontFamily: font.body, fontSize: T.lg, color: colors.onSurface },
   agreeRow: { flexDirection: "row", alignItems: "center", gap: spacing.md, marginTop: spacing.xl },
+  req: { color: colors.rose, fontWeight: "700" },
+  consentRow: { marginTop: spacing.lg },
+  consentTap: { flexDirection: "row", alignItems: "flex-start", gap: spacing.md },
+  consentLabel: { flex: 1, color: colors.onSurface, fontSize: T.base, lineHeight: 21 },
+  consentAction: { marginLeft: 38, marginTop: spacing.xs },
+  readerWrap: { flex: 1, backgroundColor: colors.surface },
+  readerHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: spacing.xl, height: 52, borderBottomWidth: 1, borderBottomColor: colors.border },
+  readerTitle: { fontFamily: font.display, fontSize: T.xl, color: colors.onSurface },
+  readerBody: { paddingHorizontal: spacing.xl, paddingTop: spacing.lg, paddingBottom: spacing.xl },
+  readerH: { fontFamily: font.display, fontSize: T.lg, color: colors.indigo, marginBottom: spacing.xs },
+  readerP: { color: colors.onSurface, fontSize: T.base, lineHeight: 22 },
+  readerAgreeBox: { marginTop: spacing.md, marginBottom: spacing.xl },
+  readerFooter: { paddingHorizontal: spacing.xl, paddingTop: spacing.md, borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.surface },
+  readerHint: { textAlign: "center", color: colors.onSurfaceSecondary, fontSize: T.sm, paddingVertical: spacing.md },
   checkbox: { width: 26, height: 26, borderRadius: 7, borderWidth: 2, borderColor: colors.borderStrong, alignItems: "center", justifyContent: "center" },
   checkboxOn: { backgroundColor: colors.indigo, borderColor: colors.indigo },
   agreeText: { flex: 1, color: colors.onSurface, fontSize: T.base, lineHeight: 20 },
