@@ -13,6 +13,8 @@
 //  • Keyed by the backend psychologist `slug`.
 // ---------------------------------------------------------------------------
 
+import { RUCHI_PHOTO } from "./ruchiPhoto";
+
 export type PsychologistProfile = {
   photo?: string;       // real image URL (headshot)
   credential?: string;  // e.g. "Clinical Psychologist"
@@ -22,6 +24,7 @@ export type PsychologistProfile = {
 
 export const PSYCHOLOGIST_PROFILES: Record<string, PsychologistProfile> = {
   "ruchi-sharma": {
+    photo: RUCHI_PHOTO,
     credential: "Clinical Psychologist",
     licence: "Registered Clinical Psychologist, RCI",
     bio: "Evidence-based support for anxiety, stress, relationships, children & post partum.",
