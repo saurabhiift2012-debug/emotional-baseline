@@ -8,6 +8,7 @@ import * as Haptics from "expo-haptics";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useApp } from "@/src/AppContext";
 import { Logo } from "@/src/Logo";
+import { PhoneField } from "@/src/PhoneField";
 import { TERMS_OF_USE, TERMS_VERSION } from "@/src/legal";
 import { Screen, Display, AppText, PrimaryButton, GhostButton, spacing, radius, font, T, useTheme, useThemedStyles } from "@/src/ui";
 
@@ -75,7 +76,7 @@ export default function Register() {
   const sendCode = async () => {
     setErr(null);
     // Validate on press so the button is never left mysteriously disabled.
-    if (!(name.trim() && phone.trim() && dob.trim() && ecName.trim() && relationship && ecPhone.trim())) {
+    if (!(name.trim() && dob.trim() && ecName.trim() && relationship) || phone.length !== 10 || ecPhone.length !== 10) {
       setErr(t("fill_required")); return;
     }
     if (!parseDDMMYYYY(dob.trim())) { setErr(t("fill_required")); return; }
@@ -83,11 +84,11 @@ export default function Register() {
     setBusy(true);
     try {
       const res = await requestOtp({
-        phone: phone.trim(), mode: "register", name: name.trim(), date_of_birth: dobToISO(dob.trim()),
+        phone: `+91${phone}`, mode: "register", name: name.trim(), date_of_birth: dobToISO(dob.trim()),
         email: email.trim() || null, language: lang,
         emergency_contact_name: ecName.trim(),
         emergency_contact_relationship: relationship,
-        emergency_contact_phone: ecPhone.trim(),
+        emergency_contact_phone: `+91${ecPhone}`,
         agreement_accepted: allConsented,
         consents: { ...consents, terms_version: TERMS_VERSION },
       });
@@ -100,7 +101,7 @@ export default function Register() {
   const verify = async () => {
     setErr(null); setBusy(true);
     try {
-      await verifyOtp(phone.trim(), code.trim());
+      await verifyOtp(`+91${phone}`, code.trim());
       // New users see a warm welcome, then the mood check-in.
       router.replace("/welcome");
     } catch (e: any) { setErr(e.message || "Verification failed"); }
@@ -122,7 +123,7 @@ export default function Register() {
             <TextInput testID="register-name-input" style={styles.input} value={name} onChangeText={setName} placeholder="Riya" placeholderTextColor={colors.onSurfaceSecondary} />
 
             <AppText style={styles.label}>{t("mobile_number")}<AppText style={styles.req}> *</AppText></AppText>
-            <TextInput testID="register-phone-input" style={styles.input} value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholder="+91 98765 43210" placeholderTextColor={colors.onSurfaceSecondary} />
+            <PhoneField testID="register-phone-input" value={phone} onChangeText={setPhone} />
 
             <AppText style={styles.label}>{t("dob")}<AppText style={styles.req}> *</AppText></AppText>
             <View style={styles.dobRow}>
@@ -173,7 +174,7 @@ export default function Register() {
             </Pressable>
 
             <AppText style={styles.label}>{t("ec_phone")}<AppText style={styles.req}> *</AppText></AppText>
-            <TextInput testID="register-ec-phone" style={styles.input} value={ecPhone} onChangeText={setEcPhone} keyboardType="phone-pad" placeholder="+91 98765 43210" placeholderTextColor={colors.onSurfaceSecondary} />
+            <PhoneField testID="register-ec-phone" value={ecPhone} onChangeText={setEcPhone} />
 
             {/* Consents — all mandatory for first-time registration */}
             <AppText style={styles.sectionHead}>{t("consent_heading")}<AppText style={styles.req}> *</AppText></AppText>
@@ -219,7 +220,7 @@ export default function Register() {
             </Modal>
           </>
         ) : (
-          <OtpStep t={t} phone={phone} code={code} setCode={setCode} devCode={devCode} err={err} busy={busy}
+          <OtpStep t={t} phone={`+91 ${phone}`} code={code} setCode={setCode} devCode={devCode} err={err} busy={busy}
                    onVerify={verify} onResend={sendCode} onChangeNumber={() => setStep("details")} />
         )}
       </KeyboardAwareScrollView>

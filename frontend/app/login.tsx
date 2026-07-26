@@ -1,11 +1,12 @@
 import React, { useState } from "react";
-import { View, StyleSheet, TextInput, Pressable } from "react-native";
+import { View, StyleSheet, Pressable } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { useApp } from "@/src/AppContext";
 import { OtpStep } from "./register";
 import { Logo } from "@/src/Logo";
+import { PhoneField } from "@/src/PhoneField";
 import { Screen, Display, AppText, PrimaryButton, GhostButton, spacing, radius, font, T, useTheme, useThemedStyles } from "@/src/ui";
 
 export default function Login() {
@@ -23,7 +24,7 @@ export default function Login() {
   const sendCode = async () => {
     setErr(null); setBusy(true);
     try {
-      const res = await requestOtp({ phone: phone.trim(), mode: "login" });
+      const res = await requestOtp({ phone: `+91${phone}`, mode: "login" });
       setDevCode(res.dev_code || null);
       setStep("otp");
     } catch (e: any) { setErr(e.message || "Could not send code"); }
@@ -33,7 +34,7 @@ export default function Login() {
   const verify = async () => {
     setErr(null); setBusy(true);
     try {
-      await verifyOtp(phone.trim(), code.trim());
+      await verifyOtp(`+91${phone}`, code.trim());
       router.replace("/(tabs)");
     } catch (e: any) { setErr(e.message || "Verification failed"); }
     finally { setBusy(false); }
@@ -50,22 +51,14 @@ export default function Login() {
             <View style={{ alignItems: "center", marginBottom: spacing.xl }}><Logo size={64} /></View>
             <Display style={styles.title}>{t("log_in")}</Display>
             <AppText style={styles.label}>{t("mobile_number")}</AppText>
-            <TextInput
-              testID="login-phone-input"
-              style={styles.input}
-              value={phone}
-              onChangeText={setPhone}
-              keyboardType="phone-pad"
-              placeholder="+91 98765 43210"
-              placeholderTextColor={colors.onSurfaceSecondary}
-            />
+            <PhoneField testID="login-phone-input" value={phone} onChangeText={setPhone} />
             {err ? <AppText testID="login-error" style={styles.err}>{err}</AppText> : null}
             <View style={{ height: spacing.lg }} />
-            <PrimaryButton testID="login-send-otp-button" label={t("send_code")} disabled={busy || !phone} onPress={sendCode} />
+            <PrimaryButton testID="login-send-otp-button" label={t("send_code")} disabled={busy || phone.length !== 10} onPress={sendCode} />
             <GhostButton testID="to-register-button" label={t("no_account")} onPress={() => router.replace("/register")} />
           </>
         ) : (
-          <OtpStep t={t} phone={phone} code={code} setCode={setCode} devCode={devCode} err={err} busy={busy}
+          <OtpStep t={t} phone={`+91 ${phone}`} code={code} setCode={setCode} devCode={devCode} err={err} busy={busy}
                    onVerify={verify} onResend={sendCode} onChangeNumber={() => setStep("phone")} />
         )}
       </KeyboardAwareScrollView>
