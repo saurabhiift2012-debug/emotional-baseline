@@ -9,6 +9,7 @@ import { moodByKey } from "@/src/moods";
 import { MoodSelector } from "@/src/MoodSelector";
 import { MoodEmoji } from "@/src/MoodEmoji";
 import { LowMoodPrompt } from "@/src/LowMoodPrompt";
+import { Logo } from "@/src/Logo";
 import { Screen, Display, AppText, Card, SectionTitle, Loading, spacing, radius, font, T, useTheme, useThemedStyles } from "@/src/ui";
 import { useTabBarPadding } from "@/src/GlassTabBar";
 
@@ -74,7 +75,10 @@ export default function Today() {
         refreshControl={<RefreshControl refreshing={false} onRefresh={load} tintColor={colors.amber} />}
       >
         <AppText style={styles.greet}>{t(greetKey)},</AppText>
-        <Display style={styles.name}>{firstName(data?.name || user?.name)} 🌿</Display>
+        <View style={styles.nameRow}>
+          <Logo size={30} />
+          <Display style={styles.name}>{firstName(data?.name || user?.name)} 🌿</Display>
+        </View>
 
         {/* TIERED SUPPORT (moved up) — sits directly under the name so talking to a
             psychologist is the first thing offered. escalate = repeated-low +
@@ -230,7 +234,8 @@ const makeStyles = (colors: any) => StyleSheet.create({
   talkNow: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: colors.tintRose, borderRadius: radius.pill, paddingHorizontal: spacing.md, height: 38 },
   talkNowText: { color: colors.rose, fontWeight: "700", fontSize: T.sm },
   greet: { color: colors.onSurfaceSecondary, fontSize: T.lg },
-  name: { fontSize: 28, marginTop: 2 },
+  nameRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm, marginTop: 2 },
+  name: { fontSize: 28 },
   banner: { backgroundColor: colors.surfaceSecondary, borderRadius: radius.lg, padding: spacing.lg, marginTop: spacing.lg },
   hero: { backgroundColor: colors.surfaceSecondary, borderRadius: radius.lg, padding: spacing.lg, marginTop: spacing.lg },
   heroHint: { color: colors.onSurfaceSecondary, fontSize: T.base, marginTop: 4 },

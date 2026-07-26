@@ -60,8 +60,13 @@ export default function Me() {
   return (
     <Screen>
       <ScrollView contentContainerStyle={[styles.wrap, { paddingBottom: bottomPad }]} showsVerticalScrollIndicator={false}>
-        <Display style={styles.h}>{user?.name}</Display>
-        <AppText style={styles.email}>{user?.phone}{user?.email ? ` · ${user.email}` : ""}</AppText>
+        <View style={styles.nameRow}>
+          <Logo size={34} />
+          <View style={{ flex: 1 }}>
+            <Display style={styles.h}>{user?.name}</Display>
+            <AppText style={styles.email}>{user?.phone}{user?.email ? ` · ${user.email}` : ""}</AppText>
+          </View>
+        </View>
 
         {/* Privacy center */}
         <Card tint={colors.tintWarm} style={{ marginTop: spacing.lg }}>
@@ -199,6 +204,7 @@ function buildExportHtml(data: any, moods: any[], lang: "en" | "hi") {
 
 const makeStyles = (colors: any) => StyleSheet.create({
   wrap: { paddingHorizontal: spacing.xl, paddingTop: spacing["2xl"] + spacing.xs, paddingBottom: 100 },
+  nameRow: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   h: { fontSize: 28 },
   email: { color: colors.onSurfaceSecondary, marginTop: 2 },
   privacyHead: { flexDirection: "row", alignItems: "center" },
