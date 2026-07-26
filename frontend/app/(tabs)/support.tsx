@@ -85,7 +85,7 @@ export default function Support() {
 }
 
 const makeStyles = (colors: any) => StyleSheet.create({
-  wrap: { paddingHorizontal: spacing.xl, paddingTop: spacing.md, paddingBottom: 100 },
+  wrap: { paddingHorizontal: spacing.xl, paddingTop: spacing["2xl"] + spacing.xs, paddingBottom: 100 },
   h: { fontSize: 26, lineHeight: 34 },
   breatheBox: { alignItems: "center", justifyContent: "center", height: 220, marginVertical: spacing.lg },
   breatheCircle: { position: "absolute", width: 180, height: 180, borderRadius: 90, backgroundColor: colors.sage, opacity: 0.35 },

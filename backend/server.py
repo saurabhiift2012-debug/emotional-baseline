@@ -1160,57 +1160,58 @@ async def _ai_polish(facts: dict, pseudo_id: str) -> Optional[str]:
         return None
 
 # ----------------------------------------------------------------------------
-# Professional support: psychologist discovery + booking (mock payment)
-# NOTE: psychologists below are clearly-labelled DEMO/TEST data.
+# Professional support: psychologist discovery + booking (real Razorpay payment)
+# Admin-supplied, real profile only — no auto-generated / fake people.
 # ----------------------------------------------------------------------------
+# weekday(): Mon=0, Tue=1, Wed=2, Thu=3, Fri=4, Sat=5, Sun=6
 DEMO_PSYCHOLOGISTS = [
-    {"slug": "ananya-rao", "name": "Dr. Ananya Rao", "verified": True,
-     "qualifications": "PhD Clinical Psychology", "specializations": ["Anxiety", "Stress", "Sleep"],
-     "languages": ["English", "Hindi"], "experience_years": 11,
-     "session_types": ["15-min Call", "Video", "Chat"], "price": 1200, "short_call_price": 400, "currency": "INR",
-     "bio": "Warm, evidence-based support for anxiety, stress and sleep difficulties."},
-    {"slug": "vikram-menon", "name": "Dr. Vikram Menon", "verified": True,
-     "qualifications": "MPhil Clinical Psychology", "specializations": ["Relationships", "Work stress", "Low mood"],
-     "languages": ["English"], "experience_years": 8,
-     "session_types": ["15-min Call", "Video"], "price": 1500, "short_call_price": 500, "currency": "INR",
-     "bio": "Helps people navigate relationships, burnout and work-related stress."},
-    {"slug": "sara-iyer", "name": "Ms. Sara Iyer", "verified": True,
-     "qualifications": "MA Counselling Psychology", "specializations": ["Self-esteem", "Anxiety", "Life transitions"],
-     "languages": ["English", "Hindi"], "experience_years": 6,
-     "session_types": ["15-min Call", "Video", "Chat"], "price": 900, "short_call_price": 300, "currency": "INR",
-     "bio": "A gentle, collaborative approach for self-esteem and life changes."},
-    {"slug": "rohit-kulkarni", "name": "Dr. Rohit Kulkarni", "verified": False,
-     "qualifications": "PsyD", "specializations": ["Sleep", "Mindfulness", "Stress"],
-     "languages": ["English", "Hindi", "Marathi"], "experience_years": 4,
-     "session_types": ["15-min Call", "Chat"], "price": 700, "short_call_price": 250, "currency": "INR",
-     "bio": "Focuses on mindfulness and sleep hygiene for everyday stress."},
+    {"slug": "ruchi-sharma", "name": "Dr. Ruchi Sharma", "verified": True,
+     "qualifications": "Registered Clinical Psychologist, RCI",
+     "specializations": ["Anxiety", "Stress", "Relationships", "Low mood",
+                         "Children behaviour", "Post partum", "Low confidence"],
+     "languages": ["English", "Hindi"],
+     "session_types": ["15-min Call"], "price": 1000, "short_call_price": 1000, "currency": "INR",
+     "bio": "Evidence-based support for anxiety, stress, relationships, children & post partum.",
+     # Availability: 10:00–14:00 and 19:00–21:00 on Mon, Wed, Fri, Sat, Sun.
+     "available_days": [0, 2, 4, 5, 6],
+     "slot_hours": [10, 11, 12, 13, 19, 20]},
 ]
 
 
 async def seed_psychologists():
-    # Upsert by slug so profile changes (e.g. new 15-min Call option) always apply.
+    # Upsert the real profile(s) by slug…
     for p in DEMO_PSYCHOLOGISTS:
         await db.psychologists.update_one(
             {"slug": p["slug"]},
-            {"$set": {**p, "is_demo": True},
+            {"$set": {**p, "is_demo": False},
              "$setOnInsert": {"created_at": datetime.now(timezone.utc).isoformat()}},
             upsert=True,
         )
+    # …and remove any legacy/fake profiles that are no longer listed.
+    keep = [p["slug"] for p in DEMO_PSYCHOLOGISTS]
+    await db.psychologists.delete_many({"slug": {"$nin": keep}})
     return
 
 
-def gen_availability(slug: str):
-    """Deterministic upcoming slots for the next 7 days."""
-    rng = random.Random(f"avail:{slug}")
+def gen_availability(psy: dict):
+    """Upcoming 15-min slots for the psychologist, honouring their weekly
+    schedule (available_days + slot_hours). Only future slots are returned."""
+    days = psy.get("available_days") or [0, 1, 2, 3, 4]
+    hours = psy.get("slot_hours") or [10, 11, 12]
     slots = []
     now = datetime.now()
-    for day in range(1, 8):
-        d = (now + timedelta(days=day)).date()
-        hours = sorted(rng.sample([10, 11, 12, 15, 16, 17, 18, 19], k=rng.randint(2, 4)))
+    for offset in range(0, 21):
+        d = (now + timedelta(days=offset)).date()
+        if d.weekday() not in days:
+            continue
         for h in hours:
+            if offset == 0 and h <= now.hour:
+                continue  # skip past/current hours today
             slots.append({"id": f"{d.isoformat()}T{h:02d}:00",
                           "date": d.isoformat(), "time": f"{h:02d}:00",
                           "label": d.strftime("%a %d %b") + f" · {h:02d}:00"})
+        if len(slots) >= 18:
+            break
     return slots
 
 
@@ -1256,12 +1257,12 @@ async def get_psychologist(pid: str, user: dict = Depends(get_current_user)):
     if not p:
         raise HTTPException(status_code=404, detail="Psychologist not found")
     p["id"] = str(p.pop("_id"))
-    p["availability"] = gen_availability(p["slug"])
+    p["availability"] = gen_availability(p)
     return p
 
 
 def _resolve_booking(p: dict, slot_id: str, session_type: str):
-    slots = gen_availability(p["slug"])
+    slots = gen_availability(p)
     slot = next((s for s in slots if s["id"] == slot_id), None)
     if not slot:
         raise HTTPException(status_code=400, detail="That slot is no longer available")

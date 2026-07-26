@@ -158,7 +158,7 @@ function BarChart({ series, max, color }: { series?: any[]; max: number; color: 
 
 const makeStyles = (colors: any) => StyleSheet.create({
   emptyMark: { position: "absolute", top: "38%", left: 0, right: 0, alignItems: "center", opacity: 0.06 },
-  wrap: { paddingHorizontal: spacing.xl, paddingTop: spacing.md, paddingBottom: 100 },
+  wrap: { paddingHorizontal: spacing.xl, paddingTop: spacing["2xl"] + spacing.xs, paddingBottom: 100 },
   h: { fontSize: 28 },
   section: { marginTop: spacing.xl, fontSize: T.xl },
   caption: { color: colors.onSurfaceSecondary, fontSize: T.sm, lineHeight: 19, marginBottom: spacing.md, marginTop: -spacing.sm },

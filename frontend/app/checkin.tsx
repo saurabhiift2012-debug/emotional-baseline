@@ -8,6 +8,7 @@ import * as Haptics from "expo-haptics";
 import { useApp } from "@/src/AppContext";
 import { api } from "@/src/api";
 import { MoodSelector } from "@/src/MoodSelector";
+import { LowMoodPrompt } from "@/src/LowMoodPrompt";
 import { CONTEXT_TAGS, moodByKey } from "@/src/moods";
 import { Screen, Display, AppText, PrimaryButton, GhostButton, IconChip, spacing, radius, font, T, useTheme, useThemedStyles } from "@/src/ui";
 
@@ -25,6 +26,7 @@ export default function CheckIn() {
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [lowMood, setLowMood] = useState(false);
+  const [promptVisible, setPromptVisible] = useState(false);
 
   const toggleCtx = (tag: string) =>
     setCtx((prev) => (prev.includes(tag) ? prev.filter((c) => c !== tag) : [...prev, tag]));
@@ -39,6 +41,7 @@ export default function CheckIn() {
       setLowMood(!!res.low_mood);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setStep("done");
+      if (res.low_mood) setPromptVisible(true);
     } catch (e) {
       setStep("done");
     } finally {
@@ -138,6 +141,11 @@ export default function CheckIn() {
           )}
         </View>
       )}
+      <LowMoodPrompt
+        visible={promptVisible}
+        onClose={() => setPromptVisible(false)}
+        onBook={(pid) => { close(); requestAnimationFrame(() => setTimeout(() => router.push({ pathname: "/psychologist/[id]", params: { id: pid, next: "1" } }), 350)); }}
+      />
     </Screen>
   );
 }

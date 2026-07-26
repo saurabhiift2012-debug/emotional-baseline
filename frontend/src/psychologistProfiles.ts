@@ -21,29 +21,10 @@ export type PsychologistProfile = {
 };
 
 export const PSYCHOLOGIST_PROFILES: Record<string, PsychologistProfile> = {
-  "ananya-rao": {
-    photo: "https://randomuser.me/api/portraits/women/68.jpg",
+  "ruchi-sharma": {
     credential: "Clinical Psychologist",
     licence: "Registered Clinical Psychologist, RCI",
-    bio: "Warm, evidence-based support for anxiety, stress and sleep.",
-  },
-  "vikram-menon": {
-    photo: "https://randomuser.me/api/portraits/men/32.jpg",
-    credential: "Clinical Psychologist",
-    licence: "Registered Clinical Psychologist, RCI",
-    bio: "Helps people navigate relationships, burnout and work stress.",
-  },
-  "sara-iyer": {
-    photo: "https://randomuser.me/api/portraits/women/44.jpg",
-    credential: "Counselling Psychologist",
-    licence: "Registered Psychologist, RCI",
-    bio: "A gentle, collaborative approach for self-esteem and life changes.",
-  },
-  "rohit-kulkarni": {
-    photo: "https://randomuser.me/api/portraits/men/75.jpg",
-    credential: "Clinical Psychologist",
-    licence: "Registered Clinical Psychologist, RCI",
-    bio: "Focuses on mindfulness and sleep for everyday stress.",
+    bio: "Evidence-based support for anxiety, stress, relationships, children & post partum.",
   },
 };
 

@@ -16,7 +16,7 @@ export default function PsychologistDetail() {
   const { colors } = useTheme();
   const styles = useThemedStyles(makeStyles);
   const router = useRouter();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, next } = useLocalSearchParams<{ id: string; next?: string }>();
   const [p, setP] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [slot, setSlot] = useState<string | null>(null);
@@ -32,10 +32,11 @@ export default function PsychologistDetail() {
         const d = await api.get(`/psychologists/${id}`);
         setP(d);
         setSessionType(d.session_types?.[0] || null);
+        if (next === "1" && d.availability?.[0]) setSlot(d.availability[0].id);
       } catch { setP(null); }
       finally { setLoading(false); }
     })();
-  }, [id]);
+  }, [id, next]);
 
   const startPayment = async () => {
     if (!slot || !sessionType) return;

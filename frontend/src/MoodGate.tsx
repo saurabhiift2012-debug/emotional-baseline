@@ -7,7 +7,7 @@ import * as Haptics from "expo-haptics";
 import { useApp } from "./AppContext";
 import { api } from "./api";
 import { MoodSelector } from "./MoodSelector";
-import { Logo } from "./Logo";
+import { LowMoodPrompt } from "./LowMoodPrompt";
 import { Display, AppText, spacing, T, useTheme, useThemedStyles } from "./ui";
 
 // Forces a mood selection every time the user comes to the app:
@@ -23,6 +23,7 @@ export function MoodGate() {
   const router = useRouter();
   const segments = useSegments();
   const [visible, setVisible] = useState(false);
+  const [promptVisible, setPromptVisible] = useState(false);
   const appState = useRef(AppState.currentState);
   const hadUser = useRef(false);
 
@@ -56,27 +57,35 @@ export function MoodGate() {
   const pick = async (mood: string) => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setVisible(false);
+    const isLow = moods.find((m) => m.key === mood)?.group === "low";
     try {
       await api.post("/checkins", { mood, context: [], note: null, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC" });
     } catch {}
+    if (isLow) setPromptVisible(true);
   };
 
   if (!user || suppressed) return null;
 
   return (
-    <Modal visible={visible} animationType="fade" statusBarTranslucent onRequestClose={() => {}}>
-      <View style={[styles.wrap, { paddingTop: insets.top + spacing.xl, paddingBottom: insets.bottom + spacing.xl }]}>
-        <Logo size={44} />
-        <Display style={styles.q}>{t("how_feeling")}</Display>
-        <AppText style={styles.sub}>{t("tap_mood_hint")}</AppText>
-        <View style={{ height: spacing.xl }} />
-        <MoodSelector moods={moods} value={null} onChange={pick} lang={lang} />
-        <Pressable testID="gate-add-detail" onPress={() => { setVisible(false); router.push("/checkin"); }} style={styles.detail}>
-          <Feather name="edit-3" size={16} color={colors.indigo} />
-          <AppText style={styles.detailText}>{t("add_detail")}</AppText>
-        </Pressable>
-      </View>
-    </Modal>
+    <>
+      <Modal visible={visible} animationType="fade" statusBarTranslucent onRequestClose={() => {}}>
+        <View style={[styles.wrap, { paddingTop: insets.top + spacing.xl, paddingBottom: insets.bottom + spacing.xl }]}>
+          <Display style={styles.q}>{t("how_feeling")}</Display>
+          <AppText style={styles.sub}>{t("tap_mood_hint")}</AppText>
+          <View style={{ height: spacing.xl }} />
+          <MoodSelector moods={moods} value={null} onChange={pick} lang={lang} />
+          <Pressable testID="gate-add-detail" onPress={() => { setVisible(false); router.push("/checkin"); }} style={styles.detail}>
+            <Feather name="edit-3" size={16} color={colors.indigo} />
+            <AppText style={styles.detailText}>{t("add_detail")}</AppText>
+          </Pressable>
+        </View>
+      </Modal>
+      <LowMoodPrompt
+        visible={promptVisible}
+        onClose={() => setPromptVisible(false)}
+        onBook={(pid) => requestAnimationFrame(() => setTimeout(() => router.push({ pathname: "/psychologist/[id]", params: { id: pid, next: "1" } }), 350))}
+      />
+    </>
   );
 }
 

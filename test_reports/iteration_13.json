@@ -1,0 +1,47 @@
+{
+  "summary": "Iteration 13 (LowMoodPrompt + single-real-psychologist + no-pill-overlap) PASSED end-to-end. Backend: 9/9 pytest tests green in /app/backend/tests/test_iteration13_low_mood_prompt.py against the public preview URL. Verified: (1) GET /api/psychologists returns EXACTLY ONE profile 'Dr. Ruchi Sharma' with price=1000, short_call_price=1000, session_types=['15-min Call'], and specializations set == {Anxiety, Stress, Relationships, Low mood, Children behaviour, Post partum, Low confidence}; no legacy/fake profiles remain. (2) GET /api/psychologists/{id} availability slots ALL fall on Mon/Wed/Fri/Sat/Sun (weekday ∈ {0,2,4,5,6}) at hours ∈ {10,11,12,13,19,20}; every slot is in the future; id format YYYY-MM-DDTHH:00 confirmed. (3) POST /api/bookings/order with a valid slot returns a real Razorpay order (order_id 'order_...', key_id starts 'rzp_test_', amount==100000 paise, currency='INR', booking_id present). (4) POST /api/bookings/order with an invalid past slot_id ('1999-01-01T10:00') returns 400. (5) POST /api/bookings/verify with a fabricated signature returns 400 and does not confirm the booking. (6) Regression: /api/insights 200 with insights+baseline+daily_moods keys; /api/today.support_tier ∈ {escalate,gentle,none}; demo OTP flow works (dev_code=123456 issued by request-otp; verify-otp returns {token,user}). Frontend (Playwright, mobile viewport 390x844, real preview URL, real demo login): Login → cold-start MoodGate → tap 'mood-tile-heavy' (LAST instance = the gate copy; there are 2 in DOM because MoodSelector is also mounted on Today hero) → LowMoodPrompt appears with heading 'Today looks heavier 💜', Dr. Ruchi Sharma / Clinical Psychologist, 'Next available: Sun 26 Jul · 10:00', '₹1000 · 15-min Call' and the primary button 'Book this 15-min call'. Tapping the VISIBLE 'low-prompt-book' navigates to /psychologist/{id}?next=1; the first slot 'Sun 26 Jul · 10:00' is PRE-SELECTED (dark indigo pill), 18 slot buttons visible ('slot-*' testIDs), and 'confirm-pay-button' is present and visible. 'Maybe later' ('low-prompt-dismiss') closes the pop-up cleanly (low-mood-prompt no longer visible). 'Need urgent help?' pill overlap check on all five tabs (Today, Insights, Progress, Support, Me) — pill bounding box top ≈ y:12 h:12, all tab titles start at y≥36 → NO OVERLAP on any tab. Psychologist list at /psychologists renders exactly ONE card: Dr. Ruchi Sharma (Verified, Clinical Psychologist, Registered Clinical Psychologist RCI, all 7 specializations, ₹1000 per session, 'Book a 15-minute call'). No fake profiles detected. Cosmetic RN-Web warnings ('shadow* deprecated', 'props.pointerEvents deprecated') persist from prior iterations — non-blocking, web-only.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": [
+      {"component": "shadow* style props (react-native-web)", "issue": "Cosmetic console warning on web preview only: 'shadow* style props are deprecated. Use boxShadow'. Non-blocking on native. Reference: any View using shadowColor/shadowOffset/shadowOpacity/shadowRadius."},
+      {"component": "props.pointerEvents (react-native-web)", "issue": "Cosmetic console warning on web preview only: 'props.pointerEvents is deprecated. Use style.pointerEvents'. Non-blocking on native."}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration13_low_mood_prompt.py",
+    "/app/test_reports/pytest/pytest_iter13.xml",
+    "/app/test_reports/iteration_13.json"
+  ],
+  "action_items": [
+    "None blocking — every review-request bullet verified end-to-end.",
+    "Optional (carried from iter 10/11/12): migrate shadow* → boxShadow and props.pointerEvents → style.pointerEvents to silence RN-Web deprecation warnings.",
+    "Optional refactor: server.py is now ~1500 lines — consider splitting into routers (auth, checkins, today, progress, bookings, psychologists, admin, downloads) for maintainability."
+  ],
+  "critical_code_review_comments": [
+    "server.py:1167-1178 DEMO_PSYCHOLOGISTS holds ONE real profile (Ruchi Sharma) with correct available_days=[0,2,4,5,6] and slot_hours=[10,11,12,13,19,20] — spec-exact.",
+    "server.py:1181-1193 seed_psychologists() upserts by slug AND deletes any doc whose slug is not in the keep-list — this is what ensures legacy fake profiles are actively purged on every startup. Verified in the live DB: only one document remains.",
+    "server.py:1196-1215 gen_availability() respects available_days + slot_hours and skips past/current hours for today (offset==0 branch). Slot id is deterministic YYYY-MM-DDTHH:00.",
+    "server.py:1275-1317 create_booking_order builds a REAL Razorpay order via _razorpay_client.order.create and returns amount in paise + key_id — no mocking. RAZORPAY_ENABLED gate at :1278 correctly short-circuits when keys are missing.",
+    "server.py:1320-1354 verify_booking_payment computes HMAC-SHA256(order_id|payment_id, key_secret) and uses hmac.compare_digest — constant-time compare. Failing signatures set booking.status='failed' before returning 400. Good.",
+    "LowMoodPrompt.tsx:23-41 fetches /api/psychologists, then /api/psychologists/{first.id}, and picks (availability||[])[0] as nextSlot — this is precisely why the pop-up 'Next available: <slot>' matches the pre-selected slot on the destination screen.",
+    "LowMoodPrompt.tsx:43-48 delegates navigation to the parent (onBook), and the parent (MoodGate.tsx:86 and index.tsx:205) schedules router.push inside requestAnimationFrame + setTimeout — this is the documented workaround for React Native Modal → router.push flakiness. Good pattern.",
+    "MoodGate.tsx renders both a full-screen MoodSelector AND the LowMoodPrompt from within itself; because MoodSelector is ALSO mounted on the Today hero (index.tsx:166), 'mood-tile-heavy' is duplicated in the DOM. Future tests MUST use .last() (or scope to the gate wrapper) — this is documented in this iteration's report as well."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration13_low_mood_prompt.py (new)",
+    "/app/test_reports/pytest/pytest_iter13.xml (new)",
+    "/app/test_reports/iteration_13.json (new)"
+  ],
+  "success_rate": {
+    "backend": "100% (9/9 pytest tests passed)",
+    "frontend": "100% of tested flows (login OTP happy path; MoodGate → Heavy → LowMoodPrompt shows Dr. Ruchi Sharma + Next available + ₹1000 · 15-min Call + Book; low-prompt-book navigates to /psychologist/{id}?next=1 with the next slot pre-selected and confirm-pay-button present; low-prompt-dismiss closes the pop-up; 'Need urgent help?' pill does NOT overlap titles on Today/Insights/Progress/Support/Me; /psychologists list shows exactly ONE Dr. Ruchi Sharma card, no fake profiles)"
+  },
+  "seed_data_creation": "None new; demo phone +919999900000 is seeded idempotently by backend startup. The pytest run creates two 'pending' bookings on the demo account (both remain in pending status because the invalid-signature verify does not confirm them). If clutter matters, main agent can garbage-collect pending bookings older than N minutes.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Login path unchanged (welcome → 'I already have an account' → login-phone-input '9999900000' → 'Send code' → OTP '123456' auto-input → 'Verify & continue'). CRITICAL: mood-tile-<key> is duplicated in the DOM because MoodSelector is mounted on BOTH the Today hero AND inside MoodGate. When the gate is showing, use page.locator('[data-testid=\"mood-tile-heavy\"]').last.click(force=True) — the gate copy is rendered later in DOM order. Similarly low-prompt-book / low-prompt-dismiss may be duplicated across the two mounts (MoodGate and Today index.tsx) — always iterate .locator(...) count and click the FIRST is_visible+is_enabled instance (the visible modal is the interactive one). Backend base URL is EXPO_PUBLIC_BACKEND_URL from /app/frontend/.env with /api prefix (the .env file exposes EXPO_PUBLIC_BACKEND_URL rather than EXPO_BACKEND_URL — the test loads BOTH via python-dotenv). Razorpay test key is live (rzp_test_TEvwsxMrGq3kz4) — do NOT attempt to complete a real card payment on web.",
+  "rca_of_issue": "N/A — no bugs found. All 3 change-request items (pill overlap fix, LowMoodPrompt on low mood with Ruchi's next slot + pre-selection on destination, single real profile with the seven listed specializations) verified working end-to-end at both API and UI layers."
+}

@@ -8,7 +8,7 @@ import { api } from "@/src/api";
 import { moodByKey } from "@/src/moods";
 import { MoodSelector } from "@/src/MoodSelector";
 import { MoodEmoji } from "@/src/MoodEmoji";
-import { Logo } from "@/src/Logo";
+import { LowMoodPrompt } from "@/src/LowMoodPrompt";
 import { Screen, Display, AppText, Card, SectionTitle, Loading, spacing, radius, font, T, useTheme, useThemedStyles } from "@/src/ui";
 import { useTabBarPadding } from "@/src/GlassTabBar";
 
@@ -23,6 +23,7 @@ export default function Today() {
   const [feedback, setFeedback] = useState<string | null>(null);
   const [justSaved, setJustSaved] = useState(false);
   const [screenAnswer, setScreenAnswer] = useState<boolean | null>(null);
+  const [promptVisible, setPromptVisible] = useState(false);
 
   const LOW_MOODS = ["heavy", "anxious", "frustrated"];
 
@@ -48,6 +49,7 @@ export default function Today() {
         setTimeout(() => setJustSaved(false), 2200);
       } else {
         setJustSaved(false);
+        setPromptVisible(true);
       }
       await load();
     } catch {}
@@ -71,9 +73,6 @@ export default function Today() {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={false} onRefresh={load} tintColor={colors.amber} />}
       >
-        <View style={styles.topBar}>
-          <Logo size={40} />
-        </View>
         <AppText style={styles.greet}>{t(greetKey)},</AppText>
         <Display style={styles.name}>{firstName(data?.name || user?.name)} 🌿</Display>
 
@@ -109,11 +108,15 @@ export default function Today() {
         )}
 
         {data?.support_tier === "gentle" && (
-          <Card style={{ marginTop: spacing.lg }} testID="gentle-card">
+          <Card tint={colors.tintLav} style={{ marginTop: spacing.lg }} testID="gentle-card">
+            <View style={styles.talkTag}>
+              <Feather name="heart" size={12} color={colors.indigo} />
+              <AppText style={styles.talkTagText}>{t("recommended_for_you")}</AppText>
+            </View>
             <AppText style={styles.talkBody}>{t("support_gentle")}</AppText>
-            <Pressable testID="gentle-talk" onPress={() => router.push("/psychologists")} style={styles.gentleLink}>
-              <Feather name="phone-call" size={14} color={colors.indigo} />
-              <AppText style={styles.gentleLinkText}>{t("talk_15_min")}</AppText>
+            <Pressable testID="gentle-talk" onPress={() => router.push("/psychologists")} style={styles.talkBtn}>
+              <Feather name="phone-call" size={16} color={colors.onSurfaceInverse} />
+              <AppText style={styles.talkBtnText}>{t("talk_15_min")}</AppText>
             </Pressable>
           </Card>
         )}
@@ -196,6 +199,11 @@ export default function Today() {
 
         <View style={{ height: spacing.xl }} />
       </ScrollView>
+      <LowMoodPrompt
+        visible={promptVisible}
+        onClose={() => setPromptVisible(false)}
+        onBook={(pid) => requestAnimationFrame(() => setTimeout(() => router.push({ pathname: "/psychologist/[id]", params: { id: pid, next: "1" } }), 350))}
+      />
     </Screen>
   );
 }
@@ -216,8 +224,9 @@ function fmtTime(iso?: string) {
 }
 
 const makeStyles = (colors: any) => StyleSheet.create({
-  wrap: { paddingHorizontal: spacing.xl, paddingTop: spacing.md, paddingBottom: 100 },
-  topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: spacing.md },
+  wrap: { paddingHorizontal: spacing.xl, paddingTop: spacing["2xl"] + spacing.xs, paddingBottom: 100 },
+  topBar: { flexDirection: "row", alignItems: "center", justifyContent: "flex-end", marginBottom: spacing.md },
+
   talkNow: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: colors.tintRose, borderRadius: radius.pill, paddingHorizontal: spacing.md, height: 38 },
   talkNowText: { color: colors.rose, fontWeight: "700", fontSize: T.sm },
   greet: { color: colors.onSurfaceSecondary, fontSize: T.lg },

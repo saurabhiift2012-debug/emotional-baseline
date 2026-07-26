@@ -293,7 +293,7 @@ export const STR: Dict = {
   usually_within_hours: { en: "Usually within a few hours", hi: "आमतौर पर कुछ घंटों में" },
   speak_with: { en: "Speak with", hi: "इनसे बात करें" },
   talk_it_through: { en: "Talk it through — a 15-minute call", hi: "इसे बातचीत में सुलझाएँ — 15 मिनट की कॉल" },
-  matched_intro: { en: "You'll be matched with one of our licensed psychologists", hi: "आपका मिलान हमारे लाइसेंस प्राप्त मनोवैज्ञानिकों में से एक से किया जाएगा" },
+  matched_intro: { en: "Book a private 15-minute call with a registered clinical psychologist.", hi: "पंजीकृत क्लिनिकल मनोवैज्ञानिक के साथ 15-मिनट की निजी कॉल बुक करें।" },
   will_call_you_at: { en: "will call you at", hi: "आपको कॉल करेंगे" },
   call_confirm_sub: { en: "Keep your phone nearby — you'll get a call at the time you chose.", hi: "अपना फ़ोन पास रखें — आपने चुने गए समय पर आपको कॉल आएगी।" },
   test_data_note: { en: "Profiles shown are demo/test data.", hi: "दिखाए गए प्रोफ़ाइल डेमो/परीक्षण डेटा हैं।" },
@@ -328,6 +328,15 @@ export const STR: Dict = {
   admin_search_phone: { en: "Search by phone digits", hi: "फ़ोन अंकों से खोजें" },
   admin_resources_saved: { en: "Saved", hi: "सहेजा गया" },
   admin_checkins_short: { en: "check-ins", hi: "चेक-इन" },
+
+  // low-mood psychologist prompt (pop-up)
+  low_prompt_title: { en: "Today looks heavier 💜", hi: "आज का दिन भारी लग रहा है 💜" },
+  low_prompt_body: { en: "Would talking to someone help? A 15-minute call with a psychologist can help you talk it through — privately and without judgement.", hi: "क्या किसी से बात करना मदद करेगा? किसी मनोवैज्ञानिक के साथ 15-मिनट की कॉल — निजी और बिना किसी निर्णय के — बात को समझने में मदद कर सकती है।" },
+  low_prompt_want_talk: { en: "Want to talk to a psychologist?", hi: "क्या मनोवैज्ञानिक से बात करना चाहेंगे?" },
+  low_prompt_next_slot: { en: "Next available", hi: "अगली उपलब्धता" },
+  low_prompt_book_slot: { en: "Book this 15-min call", hi: "यह 15-मिनट की कॉल बुक करें" },
+  low_prompt_see_slots: { en: "See available times", hi: "उपलब्ध समय देखें" },
+  low_prompt_not_now: { en: "Maybe later", hi: "शायद बाद में" },
 };
 
 export function makeT(lang: Lang) {

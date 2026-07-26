@@ -10,6 +10,7 @@ import { useApp } from "@/src/AppContext";
 import { api } from "@/src/api";
 import { moodByKey } from "@/src/moods";
 import { Logo } from "@/src/Logo";
+import { LOGO_DATA_URI } from "@/src/logoDataUri";
 import { Screen, Display, AppText, Card, SectionTitle, spacing, radius, font, T, useTheme, useThemedStyles } from "@/src/ui";
 import { useTabBarPadding } from "@/src/GlassTabBar";
 import { ThemePref } from "@/src/ThemeContext";
@@ -174,9 +175,11 @@ function buildExportHtml(data: any, moods: any[], lang: "en" | "hi") {
     th { text-align: left; background: #F2EBE1; padding: 8px; }
     td { padding: 8px; border-bottom: 1px solid #Eee6d6; vertical-align: top; }
     .foot { margin-top: 24px; color: #6B5C47; font-size: 11px; font-style: italic; }
-    .watermark { position: fixed; bottom: 16px; right: 20px; color: #3D4F7C; opacity: 0.5; font-size: 12px; font-weight: 700; letter-spacing: 0.3px; }
+    .watermark { position: fixed; bottom: 16px; right: 18px; display: flex; align-items: center; gap: 6px; opacity: 0.55; }
+    .watermark img { width: 22px; height: 22px; border-radius: 6px; }
+    .watermark span { color: #3D4F7C; font-size: 12px; font-weight: 700; letter-spacing: 0.3px; }
   </style></head><body>
-    <div class="watermark">🌿 TherapiShots</div>
+    <div class="watermark"><img src="${LOGO_DATA_URI}" alt="TherapiShots"/><span>TherapiShots</span></div>
     <h1>TherapiShots — Your Data Export</h1>
     <p class="sub">Small Steps Today, Better Tomorrow</p>
     <div class="meta">
@@ -195,7 +198,7 @@ function buildExportHtml(data: any, moods: any[], lang: "en" | "hi") {
 
 
 const makeStyles = (colors: any) => StyleSheet.create({
-  wrap: { paddingHorizontal: spacing.xl, paddingTop: spacing.md, paddingBottom: 100 },
+  wrap: { paddingHorizontal: spacing.xl, paddingTop: spacing["2xl"] + spacing.xs, paddingBottom: 100 },
   h: { fontSize: 28 },
   email: { color: colors.onSurfaceSecondary, marginTop: 2 },
   privacyHead: { flexDirection: "row", alignItems: "center" },
