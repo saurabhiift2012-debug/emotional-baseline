@@ -15,14 +15,14 @@ from database import db, client
 from services.psychologists import seed_psychologists
 from services.users import default_consents
 from routes import (meta, auth, account, checkins, insights,
-                    psychologists, bookings, admin)
+                    psychologists, bookings, admin, legal)
 
 app = FastAPI(title="TherapiShots API")
 
 # Everything is served under /api to match the Kubernetes ingress.
 api_router = APIRouter(prefix="/api")
 for module in (meta, auth, account, checkins, insights,
-               psychologists, bookings, admin):
+               psychologists, bookings, admin, legal):
     api_router.include_router(module.router)
 
 
