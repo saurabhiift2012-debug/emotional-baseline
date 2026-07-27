@@ -18,9 +18,9 @@ export function Screen({ children, style }: { children: React.ReactNode; style?:
   );
 }
 
-export function AppText({ children, style, weight, mono }: { children: React.ReactNode; style?: StyleProp<TextStyle>; weight?: "reg" | "med" | "semi"; mono?: boolean }) {
+export function AppText({ children, style, weight, mono, testID }: { children: React.ReactNode; style?: StyleProp<TextStyle>; weight?: "reg" | "med" | "semi"; mono?: boolean; testID?: string }) {
   const { colors } = useTheme();
-  return <Text style={[{ fontFamily: font.body, color: colors.onSurface }, weight === "med" && { fontWeight: "500" }, weight === "semi" && { fontWeight: "600" }, style]}>{children}</Text>;
+  return <Text testID={testID} style={[{ fontFamily: font.body, color: colors.onSurface }, weight === "med" && { fontWeight: "500" }, weight === "semi" && { fontWeight: "600" }, style]}>{children}</Text>;
 }
 
 export function Display({ children, style }: { children: React.ReactNode; style?: StyleProp<TextStyle> }) {
