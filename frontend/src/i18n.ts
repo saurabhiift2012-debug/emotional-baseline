@@ -348,7 +348,7 @@ export const STR: Dict = {
   consent_sub: { en: "Please confirm each of the following to create your account.", hi: "अपना खाता बनाने के लिए कृपया नीचे दिए गए प्रत्येक बिंदु की पुष्टि करें।" },
   consent_age18: { en: "I am 18 years or older", hi: "मैं 18 वर्ष या उससे अधिक का हूँ" },
   consent_terms: { en: "I accept the Terms of Use", hi: "मैं उपयोग की शर्तें स्वीकार करता/करती हूँ" },
-  consent_privacy: { en: "I accept the Privacy Policy", hi: "मैं गोपनीयता नीति स्वीकार करता/करती हूँ" },
+  consent_privacy: { en: "I have read and understood the Privacy Policy and consent to the collection, use, and processing of my personal information as described therein for the purpose of providing the TherapiShots services I choose to use.", hi: "मैंने गोपनीयता नीति पढ़ और समझ ली है और उसमें वर्णित अनुसार, मेरे द्वारा चुनी गई TherapiShots सेवाएँ प्रदान करने के उद्देश्य से मेरी व्यक्तिगत जानकारी के संग्रह, उपयोग और प्रसंस्करण के लिए सहमति देता/देती हूँ।" },
   consent_not_medical: { en: "I understand TherapiShots is not a medical or emergency service", hi: "मैं समझता/समझती हूँ कि TherapiShots कोई चिकित्सा या आपातकालीन सेवा नहीं है" },
   consent_data: { en: "I consent to the processing of my personal and mood data", hi: "मैं अपने व्यक्तिगत और मूड डेटा के प्रसंस्करण के लिए सहमति देता/देती हूँ" },
   consent_read_terms: { en: "Read Terms of Use", hi: "उपयोग की शर्तें पढ़ें" },
@@ -356,6 +356,7 @@ export const STR: Dict = {
   consent_i_agree: { en: "I agree", hi: "मैं सहमत हूँ" },
   consent_scroll_hint: { en: "Scroll to the bottom to agree", hi: "सहमत होने के लिए नीचे तक स्क्रॉल करें" },
   terms_title: { en: "Terms of Use", hi: "उपयोग की शर्तें" },
+  privacy_title: { en: "Privacy Policy", hi: "गोपनीयता नीति" },
   required_note: { en: "* Required", hi: "* आवश्यक" },
 };
 

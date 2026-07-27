@@ -9,7 +9,7 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { useApp } from "@/src/AppContext";
 import { Logo } from "@/src/Logo";
 import { PhoneField } from "@/src/PhoneField";
-import { TERMS_OF_USE, TERMS_VERSION } from "@/src/legal";
+import { TERMS_OF_USE, TERMS_VERSION, PRIVACY_POLICY, PRIVACY_VERSION } from "@/src/legal";
 import { Screen, Display, AppText, PrimaryButton, GhostButton, spacing, radius, font, T, useTheme, useThemedStyles } from "@/src/ui";
 
 const RELATIONSHIPS = ["parent", "spouse", "partner", "sibling", "child", "friend", "relative", "other"];
@@ -62,6 +62,7 @@ export default function Register() {
   const [showRel, setShowRel] = useState(false);
   const [showDob, setShowDob] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
+  const [showPrivacy, setShowPrivacy] = useState(false);
   const [code, setCode] = useState("");
   const [devCode, setDevCode] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -90,7 +91,7 @@ export default function Register() {
         emergency_contact_relationship: relationship,
         emergency_contact_phone: `+91${ecPhone}`,
         agreement_accepted: allConsented,
-        consents: { ...consents, terms_version: TERMS_VERSION },
+        consents: { ...consents, terms_version: TERMS_VERSION, privacy_version: PRIVACY_VERSION },
       });
       setDevCode(res.dev_code || null);
       setStep("otp");
@@ -185,7 +186,8 @@ export default function Register() {
             <ConsentRow testID="consent-terms" checked={consents.terms} onPress={() => toggle("terms")} label={t("consent_terms")} styles={styles} colors={colors}
               action={<Pressable testID="open-terms" onPress={() => setShowTerms(true)} hitSlop={8}><AppText style={styles.readLinkText}>{t("consent_read_terms")}</AppText></Pressable>} />
 
-            <ConsentRow testID="consent-privacy" checked={consents.privacy} onPress={() => toggle("privacy")} label={t("consent_privacy")} styles={styles} colors={colors} />
+            <ConsentRow testID="consent-privacy" checked={consents.privacy} onPress={() => toggle("privacy")} label={t("consent_privacy")} styles={styles} colors={colors}
+              action={<Pressable testID="open-privacy" onPress={() => setShowPrivacy(true)} hitSlop={8}><AppText style={styles.readLinkText}>{t("consent_read_privacy")}</AppText></Pressable>} />
 
             <ConsentRow testID="consent-not-medical" checked={consents.notMedical} onPress={() => toggle("notMedical")} label={t("consent_not_medical")} styles={styles} colors={colors} />
 
@@ -214,8 +216,20 @@ export default function Register() {
             {/* Terms of Use reader — scroll to bottom, tap "I agree" to return */}
             <Modal visible={showTerms} animationType="slide" onRequestClose={() => setShowTerms(false)}>
               <TermsReader
+                title={t("terms_title")}
+                sections={TERMS_OF_USE}
                 onAgree={() => { setConsents((c) => ({ ...c, terms: true })); setShowTerms(false); }}
                 onClose={() => setShowTerms(false)}
+              />
+            </Modal>
+
+            {/* Privacy Policy reader */}
+            <Modal visible={showPrivacy} animationType="slide" onRequestClose={() => setShowPrivacy(false)}>
+              <TermsReader
+                title={t("privacy_title")}
+                sections={PRIVACY_POLICY}
+                onAgree={() => { setConsents((c) => ({ ...c, privacy: true })); setShowPrivacy(false); }}
+                onClose={() => setShowPrivacy(false)}
               />
             </Modal>
           </>
@@ -276,7 +290,7 @@ function ConsentRow({ testID, checked, onPress, label, action, styles, colors }:
   );
 }
 
-function TermsReader({ onAgree, onClose }: { onAgree: () => void; onClose: () => void }) {
+function TermsReader({ title, sections, onAgree, onClose }: { title: string; sections: { h: string; b: string }[]; onAgree: () => void; onClose: () => void }) {
   const { t } = useApp();
   const { colors } = useTheme();
   const styles = useThemedStyles(makeStyles);
@@ -285,7 +299,7 @@ function TermsReader({ onAgree, onClose }: { onAgree: () => void; onClose: () =>
   return (
     <View style={[styles.readerWrap, { paddingTop: insets.top }]}>
       <View style={styles.readerHeader}>
-        <AppText style={styles.readerTitle}>{t("terms_title")}</AppText>
+        <AppText style={styles.readerTitle}>{title}</AppText>
         <Pressable testID="terms-close" onPress={onClose} hitSlop={10}>
           <Feather name="x" size={24} color={colors.onSurface} />
         </Pressable>
@@ -300,7 +314,7 @@ function TermsReader({ onAgree, onClose }: { onAgree: () => void; onClose: () =>
           if (layoutMeasurement.height + contentOffset.y >= contentSize.height - 40) setAtBottom(true);
         }}
       >
-        {TERMS_OF_USE.map((s, i) => (
+        {sections.map((s, i) => (
           <View key={i} style={{ marginBottom: spacing.lg }}>
             <AppText style={styles.readerH}>{s.h}</AppText>
             <AppText style={styles.readerP}>{s.b}</AppText>
