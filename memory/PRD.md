@@ -111,3 +111,19 @@ how I feel?" via a DETERMINISTIC pattern engine. Never diagnoses. Private by def
   locked empty state (Logo + "Talk to a psychologist" CTA) until resources are assigned.
 - Verified: backend curl (auth reject/accept, metrics, masked users, assign filters bogus keys, no-token 401)
   + frontend screenshots (passcode gate, dashboard, user list, resource toggle persists).
+
+## Session update 2026-06 (Backend refactor — server.py split into modules) — DONE
+- Split the ~1568-line server.py into a maintainable package (behavior-preserving,
+  same 30 /api routes, same paths/logic verbatim):
+  - `database.py` (Mongo client/db), `config.py` (env + Twilio/Razorpay clients + logger),
+    `catalog.py` (MOODS/CONTEXT_TAGS/RESOURCE_CATALOG/SMALL_STEPS/CONSENT_KEYS/STORY_MATRIX),
+    `models.py` (Pydantic), `security.py` (JWT + get_current_user/get_admin).
+  - `services/`: health.py, users.py, otp.py, analytics.py, story.py, psychologists.py.
+  - `routes/`: meta, auth, account, checkins, insights, psychologists, bookings, admin
+    (each an APIRouter, mounted under a single `/api` router in server.py).
+  - `server.py` is now a thin entry point (app, CORS, startup seed, shutdown).
+- Verified: import OK, 30 /api routes present, curl smoke (auth OTP demo → today → psychologists)
+  green; 3/3 current-spec iteration14 consent tests pass. (Stale pre-iteration-14
+  test_therapishots_api register tests fail only because they omit the now-mandatory
+  emergency-contact fields — unrelated to the refactor.)
+- AppText testID forwarding (iter14 MEDIUM item) confirmed already fixed in src/ui.tsx:21.
