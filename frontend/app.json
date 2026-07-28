@@ -10,7 +10,10 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.emergent.emotionalbaseline.jqthw9"
+      "bundleIdentifier": "com.emergent.emotionalbaseline.jqthw9",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "Add a photo to a psychologist profile"
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -43,6 +46,12 @@
         {
           "icon": "./assets/images/icon.png",
           "color": "#7c5cff"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Add a photo to a psychologist profile"
         }
       ]
     ],

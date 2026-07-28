@@ -56,7 +56,7 @@ export default function Psychologists() {
               <Pressable key={p.id} testID={`psy-card-${p.id}`} onPress={() => router.push(`/psychologist/${p.id}`)}>
                 <Card tint={colors.tintWarm} style={{ marginBottom: spacing.md }}>
                   <View style={styles.cardTop}>
-                    <PsychologistAvatar photo={prof.photo} size={56} />
+                    <PsychologistAvatar photo={p.photo || prof.photo} size={56} />
                     <View style={{ flex: 1 }}>
                       <View style={styles.nameRow}>
                         <AppText style={styles.name}>{p.name}</AppText>

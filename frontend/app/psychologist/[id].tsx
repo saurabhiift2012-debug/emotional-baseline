@@ -78,7 +78,7 @@ export default function PsychologistDetail() {
         <ScrollView contentContainerStyle={styles.confirmWrap}>
           <Logo size={40} />
           <View style={{ height: spacing.lg }} />
-          <PsychologistAvatar photo={prof.photo} size={88} />
+          <PsychologistAvatar photo={confirmed.photo || p?.photo || prof.photo} size={88} />
           <Display style={styles.confirmTitle}>
             {confirmed.psychologist_name} {t("will_call_you_at")} {confirmed.slot_label}
           </Display>
@@ -107,7 +107,7 @@ export default function PsychologistDetail() {
       <ScrollView contentContainerStyle={styles.wrap} showsVerticalScrollIndicator={false}>
         {/* Warm, personal hero — a real person, not an automated screen */}
         <View style={styles.hero}>
-          <PsychologistAvatar photo={prof.photo} size={96} />
+          <PsychologistAvatar photo={p.photo || prof.photo} size={96} />
           <View style={styles.nameRow}>
             <Display style={styles.name}>{p.name}</Display>
             {p.verified ? <View style={styles.verified}><Feather name="check" size={11} color={colors.surface} /><AppText style={styles.verifiedText}>{t("verified")}</AppText></View> : null}

@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { View, StyleSheet, TextInput, Pressable, ActivityIndicator } from "react-native";
+import { View, StyleSheet, TextInput, Pressable, ActivityIndicator, Alert, Linking } from "react-native";
+import { Image } from "expo-image";
+import * as ImagePicker from "expo-image-picker";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { adminApi } from "@/src/api";
@@ -27,6 +29,7 @@ export function AdminPsychologists({ token }: { token: string }) {
   const [price, setPrice] = useState("1000");
   const [days, setDays] = useState<number[]>([0, 2, 4]);
   const [hours, setHours] = useState("10, 11, 12, 19");
+  const [photo, setPhoto] = useState<string>("");   // data URI (base64)
 
   const load = useCallback(async () => {
     try { const d = await adminApi(token).get("/admin/psychologists"); setList(d.psychologists || []); }
@@ -37,7 +40,7 @@ export function AdminPsychologists({ token }: { token: string }) {
   const resetFields = () => {
     setName(""); setPhone(""); setQuals(""); setSpecs(""); setLangs("English, Hindi");
     setBio(""); setPrice("1000"); setDays([0, 2, 4]); setHours("10, 11, 12, 19");
-    setErr(""); setOk("");
+    setPhoto(""); setErr(""); setOk("");
   };
 
   const openNew = () => { Haptics.selectionAsync(); resetFields(); setMode(mode === "new" ? null : "new"); };
@@ -54,7 +57,34 @@ export function AdminPsychologists({ token }: { token: string }) {
     setPrice(String(p.price ?? 1000));
     setDays(Array.isArray(p.available_days) ? p.available_days : [0, 2, 4]);
     setHours((p.slot_hours || []).join(", "));
+    setPhoto(p.photo || "");
     setMode(p.id);
+  };
+
+  const pickPhoto = async () => {
+    Haptics.selectionAsync();
+    setErr("");
+    // Contextual permission handling for the media library.
+    const current = await ImagePicker.getMediaLibraryPermissionsAsync();
+    let status = current.status;
+    if (status !== "granted") {
+      if (!current.canAskAgain) {
+        Alert.alert("Photos access needed", "Allow photo access to set a doctor's picture.",
+          [{ text: "Cancel", style: "cancel" }, { text: "Open Settings", onPress: () => Linking.openSettings() }]);
+        return;
+      }
+      const req = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      status = req.status;
+      if (status !== "granted") return;
+    }
+    const res = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true, aspect: [1, 1], quality: 0.6, base64: true,
+    });
+    if (res.canceled || !res.assets?.[0]?.base64) return;
+    const a = res.assets[0];
+    const mime = a.mimeType || "image/jpeg";
+    setPhoto(`data:${mime};base64,${a.base64}`);
   };
 
   const toggleDay = (i: number) => { Haptics.selectionAsync(); setDays((d) => d.includes(i) ? d.filter((x) => x !== i) : [...d, i]); };
@@ -75,6 +105,7 @@ export function AdminPsychologists({ token }: { token: string }) {
       available_days: days,
       slot_hours: hours.split(",").map((s) => parseInt(s.trim())).filter((n) => !isNaN(n)),
       verified: true,
+      photo: photo || null,
     };
     setSaving(true);
     try {
@@ -118,6 +149,26 @@ export function AdminPsychologists({ token }: { token: string }) {
       {editing && (
         <Card style={{ marginBottom: spacing.md }} testID="psy-form">
           <AppText style={styles.formTitle}>{mode === "new" ? "New doctor" : "Edit doctor"}</AppText>
+          <View style={styles.photoRow}>
+            <Pressable testID="psy-photo-pick" onPress={pickPhoto} style={[styles.photoWrap, { borderColor: colors.border, backgroundColor: colors.surfaceSecondary }]}>
+              {photo ? (
+                <Image source={{ uri: photo }} style={styles.photoImg} contentFit="cover" />
+              ) : (
+                <Feather name="camera" size={22} color={colors.indigo} />
+              )}
+            </Pressable>
+            <View style={{ flex: 1 }}>
+              <Pressable testID="psy-photo-btn" onPress={pickPhoto} style={[styles.photoBtn, { borderColor: colors.indigo }]}>
+                <Feather name="image" size={15} color={colors.indigo} />
+                <AppText style={[styles.photoBtnText, { color: colors.indigo }]}>{photo ? "Change photo" : "Add photo"}</AppText>
+              </Pressable>
+              {!!photo && (
+                <Pressable testID="psy-photo-remove" onPress={() => setPhoto("")} style={styles.photoRemove}>
+                  <AppText style={[styles.photoRemoveText, { color: colors.rose }]}>Remove</AppText>
+                </Pressable>
+              )}
+            </View>
+          </View>
           <Field label="Full name *" value={name} onChangeText={setName} placeholder="Dr. Jane Doe" styles={styles} colors={colors} testID="psy-name" />
           <Field label="Login mobile (10-digit) *" value={phone} onChangeText={(v: string) => setPhone(v.replace(/\D/g, "").slice(0, 10))} placeholder="9876543210" keyboardType="number-pad" styles={styles} colors={colors} testID="psy-phone" />
           <Field label="Qualifications" value={quals} onChangeText={setQuals} placeholder="Clinical Psychologist, RCI" styles={styles} colors={colors} testID="psy-quals" />
@@ -151,10 +202,19 @@ export function AdminPsychologists({ token }: { token: string }) {
       {list.map((p) => (
         <Card key={p.id} style={{ marginBottom: spacing.sm }} testID={`psy-row-${p.id}`}>
           <View style={styles.psyRow}>
-            <Pressable style={{ flex: 1 }} testID={`psy-edit-${p.id}`} onPress={() => openEdit(p)}>
-              <AppText style={styles.psyName}>{p.name}</AppText>
-              <AppText style={styles.psyMeta}>{p.login_phone} · ₹{p.price}</AppText>
-              <AppText style={styles.psyMeta}>{(p.specializations || []).slice(0, 3).join(" · ")}</AppText>
+            <Pressable style={styles.rowMain} testID={`psy-edit-${p.id}`} onPress={() => openEdit(p)}>
+              {p.photo ? (
+                <Image source={{ uri: p.photo }} style={styles.rowThumb} contentFit="cover" />
+              ) : (
+                <View style={[styles.rowThumb, styles.rowThumbEmpty, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border }]}>
+                  <Feather name="user" size={18} color={colors.indigo} />
+                </View>
+              )}
+              <View style={{ flex: 1 }}>
+                <AppText style={styles.psyName}>{p.name}</AppText>
+                <AppText style={styles.psyMeta}>{p.login_phone} · ₹{p.price}</AppText>
+                <AppText style={styles.psyMeta}>{(p.specializations || []).slice(0, 3).join(" · ")}</AppText>
+              </View>
             </Pressable>
             <Pressable testID={`psy-edit-icon-${p.id}`} onPress={() => openEdit(p)} hitSlop={8} style={styles.iconBtn}>
               <Feather name="edit-2" size={17} color={colors.indigo} />
@@ -186,6 +246,13 @@ const makeStyles = (colors: any) => StyleSheet.create({
   addBtn: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: spacing.md, height: 38, borderRadius: radius.pill },
   addText: { color: "#fff", fontWeight: "700", fontSize: T.sm },
   formTitle: { fontSize: T.lg, fontWeight: "700", color: colors.onSurface, marginBottom: spacing.sm },
+  photoRow: { flexDirection: "row", alignItems: "center", gap: spacing.md, marginBottom: spacing.sm },
+  photoWrap: { width: 72, height: 72, borderRadius: 36, borderWidth: 1, alignItems: "center", justifyContent: "center", overflow: "hidden" },
+  photoImg: { width: 72, height: 72, borderRadius: 36 },
+  photoBtn: { flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1, borderRadius: radius.pill, paddingHorizontal: spacing.md, height: 38, alignSelf: "flex-start" },
+  photoBtnText: { fontWeight: "700", fontSize: T.sm },
+  photoRemove: { marginTop: 6, alignSelf: "flex-start" },
+  photoRemoveText: { fontSize: T.sm, fontWeight: "600" },
   fieldLabel: { fontSize: T.sm, color: colors.onSurfaceSecondary, marginBottom: 4, marginTop: spacing.xs },
   input: { backgroundColor: colors.surfaceSecondary, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, fontSize: T.base, color: colors.onSurface },
   dayRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs, marginBottom: spacing.sm },
@@ -198,6 +265,9 @@ const makeStyles = (colors: any) => StyleSheet.create({
   saveBtn: { flex: 2, height: 48, borderRadius: radius.pill, alignItems: "center", justifyContent: "center" },
   saveText: { color: "#2C2416", fontWeight: "700", fontSize: T.base },
   psyRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  rowMain: { flex: 1, flexDirection: "row", alignItems: "center", gap: spacing.md },
+  rowThumb: { width: 44, height: 44, borderRadius: 22 },
+  rowThumbEmpty: { alignItems: "center", justifyContent: "center", borderWidth: 1 },
   psyName: { fontSize: T.lg, fontWeight: "600", color: colors.onSurface },
   psyMeta: { fontSize: T.sm, color: colors.onSurfaceSecondary, marginTop: 1 },
   iconBtn: { width: 38, height: 38, alignItems: "center", justifyContent: "center" },
