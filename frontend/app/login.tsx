@@ -34,8 +34,8 @@ export default function Login() {
   const verify = async () => {
     setErr(null); setBusy(true);
     try {
-      await verifyOtp(`+91${phone}`, code.trim());
-      router.replace("/(tabs)");
+      const u = await verifyOtp(`+91${phone}`, code.trim());
+      router.replace(u.role === "psychologist" ? "/psy-dashboard" : "/(tabs)");
     } catch (e: any) { setErr(e.message || "Verification failed"); }
     finally { setBusy(false); }
   };

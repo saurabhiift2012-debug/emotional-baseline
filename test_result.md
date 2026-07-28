@@ -102,93 +102,142 @@
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
 
-user_problem_statement: "TherapiShots emotional wellbeing app. This session: (1) Twilio Verify real SMS OTP restricted to Indian +91 numbers, (2) Razorpay real payments for 15-min psychologist calls, (3) Dark/Light/System theming across all screens, (4) custom TherapiShots logo on icon/splash + in-app."
+user_problem_statement: "Real-time appointment booking workflow (Phase 1) on MongoDB+FastAPI (no Supabase). Booking creates an appointment + reserves the slot atomically (idempotent, no double-book), processes Razorpay payment, routes to the assigned psychologist. New in-app Psychologist mode (phone+OTP login) shows bookings in realtime (WebSocket) with Accept/Decline/Reschedule. User is notified of every status change via in-app notifications + push (Emergent-managed). Notification delivery attempts/failures recorded in an audit log. Admin can add/manage multiple doctors, each with their own login phone that receives notifications. Deferred: email, calendar invites, reminders."
 
 backend:
-  - task: "Twilio Verify OTP (Indian +91 only) — request-otp / verify-otp"
-    implemented: true
-    working: "NA"
-    file: "backend/server.py"
-    stuck_count: 0
-    priority: "high"
-    needs_retesting: true
-    status_history:
-        - working: "NA"
-          agent: "main"
-          comment: "Replaced mock OTP with Twilio Verify. _ensure_indian_phone enforces 10-digit 6-9 start, normalises to +91. Test number +919999900000 uses static code 123456 (returns dev_code). Real numbers use Twilio Verify send/check. Verified locally: request+verify with test number returns token; invalid phone rejected 400."
-  - task: "Razorpay order creation + signature verification for bookings"
-    implemented: true
-    working: "NA"
-    file: "backend/server.py"
-    stuck_count: 0
-    priority: "high"
-    needs_retesting: true
-    status_history:
-        - working: "NA"
-          agent: "main"
-          comment: "POST /bookings/order creates real Razorpay order (verified locally, real order_id returned) + pending booking. POST /bookings/verify validates HMAC-SHA256 signature then confirms. list_bookings only returns confirmed/cancelled. Cannot complete real card payment via automation; test order creation + that verify rejects an invalid signature (400)."
-
-frontend:
-  - task: "Dark/Light/System theming across all screens"
+  - task: "Atomic + idempotent slot booking (no double-book under concurrency)"
     implemented: true
     working: true
-    file: "frontend/src/ThemeContext.tsx, theme.ts, ui.tsx, all screens"
+    file: "backend/routes/bookings.py"
     stuck_count: 0
     priority: "high"
     needs_retesting: true
     status_history:
         - working: true
           agent: "main"
-          comment: "New ThemeProvider (system/light/dark, persisted). ui.tsx primitives + all ~17 screens converted to makeStyles(colors)+useTheme. Appearance toggle in Me tab. Verified via screenshot: Me screen toggled to dark correctly (tab bar, cards, switches all themed)."
-  - task: "Razorpay WebView checkout flow on psychologist detail"
+          comment: "POST /bookings/order reserves the slot via unique index on slot_locks(psychologist_id,slot_id). Verified by curl: 2nd concurrent order for same slot -> 409; replay with same idempotency_key -> same booking_id. Razorpay order failure releases the lock. verify-otp signature check unchanged; on success status becomes awaiting_confirmation and notifies psychologist + user."
+  - task: "Psychologist portal: /psy/bookings, accept, decline, reschedule (role-gated)"
     implemented: true
-    working: "NA"
-    file: "frontend/src/RazorpayCheckout.tsx, app/psychologist/[id].tsx"
+    working: true
+    file: "backend/routes/psy.py, backend/security.py"
     stuck_count: 0
     priority: "high"
     needs_retesting: true
     status_history:
-        - working: "NA"
+        - working: true
           agent: "main"
-          comment: "Pay now -> /bookings/order -> RazorpayCheckout WebView (checkout.js) -> onSuccess -> /bookings/verify -> confirmation. Needs verification that order call fires and checkout modal opens."
-  - task: "TherapiShots logo (icon/splash + onboarding/login/register)"
+          comment: "get_psychologist dependency (role=psychologist). Seeded Dr. Ruchi login +919999900001 / 123456. Integration test: psy sees a seeded awaiting_confirmation booking, accept -> status accepted, user gets in-app notification 'Your session is confirmed', audit has in_app=success + push=failure (placeholder key). Decline releases slot lock; reschedule moves lock atomically."
+  - task: "Notifications + audit log (in-app + realtime + push) with delivery audit"
     implemented: true
     working: true
-    file: "frontend/app.json, src/Logo.tsx, onboarding/login/register"
+    file: "backend/services/notifications.py, backend/routes/notifications.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: true
+          agent: "main"
+          comment: "notify_user writes in-app notification, broadcasts over WS, attempts push, and records EVERY channel attempt in notification_audit (success/failure). GET /notifications, unread-count, read, read-all implemented + verified."
+  - task: "Realtime WebSocket endpoint /api/ws?token=JWT"
+    implemented: true
+    working: "NA"
+    file: "backend/routes/ws.py, backend/services/realtime.py"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "JWT via query param; ConnectionManager keyed by user_id. Broadcasts booking_new/booking_updated/notification. Needs verification that WS upgrade works through the ingress proxy; REST refetch-on-focus is the fallback."
+  - task: "Admin psychologist CRUD (add doctors with own login phone)"
+    implemented: true
+    working: true
+    file: "backend/routes/admin.py, backend/services/psychologists.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: true
+          agent: "main"
+          comment: "GET/POST/PUT/DELETE /admin/psychologists (admin-token). Creating a doctor links a user account (role=psychologist) to their login phone so they can log in + receive booking alerts. seed_psychologists made non-destructive (won't delete admin-added doctors on restart)."
+  - task: "Push register relay /api/register-push (Emergent-managed)"
+    implemented: true
+    working: "NA"
+    file: "backend/routes/push.py, backend/services/push.py"
     stuck_count: 0
     priority: "medium"
     needs_retesting: false
     status_history:
-        - working: true
+        - working: "NA"
           agent: "main"
-          comment: "Logo mark on icon/splash/adaptive/favicon. Logo component shown on onboarding + auth. Verified via screenshot on onboarding."
-  - task: "Android edge-to-edge safe area — tab bar (action ribbon) above system nav bar"
+          comment: "Backend relay per Emergent push playbook. EMERGENT_PUSH_KEY=placeholder (deployer replaces at build). Push delivery only works on real device builds — cannot be validated in preview; audit records push=failure with placeholder, which is expected."
+
+frontend:
+  - task: "Psychologist dashboard screen (realtime + accept/decline/reschedule)"
     implemented: true
-    working: true
-    file: "frontend/app/(tabs)/_layout.tsx, onboarding.tsx, checkin.tsx"
+    working: "NA"
+    file: "frontend/app/psy-dashboard.tsx, frontend/app/login.tsx, frontend/app/index.tsx"
     stuck_count: 0
     priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "Login with +919999900001 / 123456 routes to /psy-dashboard (role-based). Lists new requests with Accept/Decline/Reschedule; WS live indicator; reschedule slot picker modal. Needs E2E verification."
+  - task: "User notifications inbox + bell entry (from Appointments)"
+    implemented: true
+    working: "NA"
+    file: "frontend/app/notifications.tsx, frontend/app/appointments.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "Bell icon in Appointments header -> /notifications inbox (marks read on view). Appointments now shows new statuses (awaiting_confirmation/accepted/rescheduled/declined/cancelled)."
+  - task: "Admin add/manage doctors UI"
+    implemented: true
+    working: "NA"
+    file: "frontend/src/AdminPsychologists.tsx, frontend/app/admin.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "In admin dashboard (passcode Kanha@1983): 'Add doctor' form (name, +91 login phone, quals, specializations, languages, price, available days, slot hours) + list with delete. Needs E2E verification that a created doctor appears in the public psychologist list and can log in."
+  - task: "Push wiring (module-scope handlers, tap, nudge, registration)"
+    implemented: true
+    working: "NA"
+    file: "frontend/app/_layout.tsx, frontend/src/push.ts, frontend/src/AppContext.tsx, frontend/app.json"
+    stuck_count: 0
+    priority: "low"
     needs_retesting: false
     status_history:
-        - working: true
+        - working: "NA"
           agent: "main"
-          comment: "Tab bar height/paddingBottom now add useSafeAreaInsets().bottom so the ribbon sits above the Android system nav bar (edgeToEdgeEnabled). Onboarding + check-in fixed-bottom CTAs also add bottom inset. Verified via screenshot."
+          comment: "expo-notifications handlers at module scope; tap + cold-start routing; denied-permission weekly nudge; registerForPush on login+app-open. Cannot be validated in preview/Expo Go (needs real build + google-services.json)."
 
 metadata:
   created_by: "main_agent"
-  version: "2.0"
-  test_sequence: 0
+  version: "3.0"
+  test_sequence: 1
   run_ui: false
 
 test_plan:
   current_focus:
-    - "Twilio Verify OTP (Indian +91 only) — request-otp / verify-otp"
-    - "Razorpay order creation + signature verification for bookings"
-    - "Razorpay WebView checkout flow on psychologist detail"
+    - "Atomic + idempotent slot booking (no double-book under concurrency)"
+    - "Psychologist portal: /psy/bookings, accept, decline, reschedule (role-gated)"
+    - "Notifications + audit log (in-app + realtime + push) with delivery audit"
+    - "Admin psychologist CRUD (add doctors with own login phone)"
+    - "Psychologist dashboard screen (realtime + accept/decline/reschedule)"
+    - "User notifications inbox + bell entry (from Appointments)"
+    - "Admin add/manage doctors UI"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
 
 agent_communication:
     - agent: "main"
-      message: "Please test: (A) BACKEND — OTP flow with test number +919999900000 / code 123456 (request-otp returns dev_code, verify-otp returns token+user); Indian phone validation rejects non-Indian/short numbers (400); auth-protected endpoints work with token; /bookings/order returns real Razorpay order (order_id, key_id, amount) for a valid psychologist+slot+15-min Call; /bookings/verify rejects an invalid signature (400). (B) FRONTEND — login with demo number lands on Today; Me tab Appearance toggle switches Light/Dark/System and persists; navigating to a psychologist and tapping 'Pay now' calls /bookings/order and opens the Razorpay checkout WebView (do NOT attempt to complete a real card payment). Credentials in /app/memory/test_credentials.md. Razorpay is TEST mode."
+      message: "Phase 1 realtime booking workflow built on MongoDB+FastAPI (NO Supabase). Please test BOTH backend + frontend. Credentials: demo user +919999900000/123456; psychologist Dr. Ruchi +919999900001/123456; admin passcode Kanha@1983 (Me->About->long-press version). BACKEND focus: (1) slot double-book prevention (two /bookings/order for same slot -> 2nd 409) and idempotency (same idempotency_key -> same booking_id) [already curl-verified]; (2) psychologist role gating: non-psychologist token on /psy/* -> 403; (3) accept/decline/reschedule change status and create a user notification + notification_audit entries (in_app success, push failure expected on placeholder key); (4) admin psychologist CRUD requires admin token, created doctor appears in public GET /psychologists and gets a linked psychologist user; (5) GET /notifications + read-all. NOTE: Razorpay signature can't be completed via automation — to seed an awaiting_confirmation booking for psychologist tests, insert directly into db.bookings + db.slot_locks (see how main agent did it) OR test the psy endpoints against a manually-seeded booking. FRONTEND focus: login as psychologist routes to /psy-dashboard and lists bookings with Accept/Decline/Reschedule; admin dashboard 'Add doctor' creates a doctor that then appears under /psychologists; Appointments bell opens /notifications. PUSH and WebSocket realtime may NOT work in the web preview — verify REST fallbacks (refetch on focus) instead; do not fail push (placeholder key, real-build only). Razorpay is TEST mode; do not complete a card payment."
+

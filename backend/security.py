@@ -52,3 +52,9 @@ async def get_admin(creds: HTTPAuthorizationCredentials = Depends(security)) -> 
     if payload.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Admin access required")
     return payload
+
+
+async def get_psychologist(user: dict = Depends(get_current_user)) -> dict:
+    if user.get("role") != "psychologist" or not user.get("psychologist_id"):
+        raise HTTPException(status_code=403, detail="Psychologist access required")
+    return user

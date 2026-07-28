@@ -9,9 +9,11 @@ import hmac
 from database import db
 from config import ADMIN_PASSCODE
 from catalog import RESOURCE_CATALOG, RESOURCE_KEYS
-from models import AdminAuthIn, AdminResourcesIn
+from models import AdminAuthIn, AdminResourcesIn, AdminPsychologistIn
 from security import get_admin, create_admin_token
 from services.users import mask_phone
+from services.psychologists import (slugify, link_psychologist_user,
+                                    unlink_psychologist_user)
 
 router = APIRouter()
 
@@ -109,3 +111,84 @@ async def admin_set_resources(uid: str, body: AdminResourcesIn, _: dict = Depend
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="User not found")
     return {"assigned_resources": assigned}
+
+
+
+# ---------------------------------------------------------------------------
+# Admin: manage psychologists (add real doctors with their own login phone).
+# ---------------------------------------------------------------------------
+def _psy_public(p: dict) -> dict:
+    p["id"] = str(p.pop("_id"))
+    return p
+
+
+@router.get("/admin/psychologists")
+async def admin_list_psychologists(_: dict = Depends(get_admin)):
+    items = await db.psychologists.find({}).sort("created_at", -1).to_list(200)
+    return {"psychologists": [_psy_public(p) for p in items]}
+
+
+async def _apply_psy_payload(body: AdminPsychologistIn) -> dict:
+    return {
+        "name": body.name.strip(),
+        "login_phone": body.login_phone.strip(),
+        "qualifications": body.qualifications or "",
+        "specializations": body.specializations,
+        "languages": body.languages,
+        "bio": body.bio or "",
+        "price": body.price,
+        "short_call_price": body.short_call_price if body.short_call_price is not None else body.price,
+        "currency": body.currency,
+        "session_types": body.session_types or ["15-min Call"],
+        "available_days": body.available_days,
+        "slot_hours": body.slot_hours,
+        "verified": body.verified,
+        "photo": body.photo,
+    }
+
+
+@router.post("/admin/psychologists")
+async def admin_create_psychologist(body: AdminPsychologistIn, _: dict = Depends(get_admin)):
+    if not body.name.strip() or not body.login_phone.strip():
+        raise HTTPException(status_code=400, detail="Name and login phone are required.")
+    data = await _apply_psy_payload(body)
+    slug = slugify(body.name)
+    if await db.psychologists.find_one({"slug": slug}):
+        slug = f"{slug}-{ObjectId()}"[:40]
+    data["slug"] = slug
+    data["is_demo"] = False
+    data["created_at"] = datetime.now(timezone.utc).isoformat()
+    res = await db.psychologists.insert_one(dict(data))
+    pid = str(res.inserted_id)
+    # create/link the psychologist's login account so they can log in + get alerts
+    await link_psychologist_user(pid, body.login_phone, body.name.strip())
+    prof = await db.psychologists.find_one({"_id": res.inserted_id})
+    return {"psychologist": _psy_public(prof)}
+
+
+@router.put("/admin/psychologists/{pid}")
+async def admin_update_psychologist(pid: str, body: AdminPsychologistIn, _: dict = Depends(get_admin)):
+    try:
+        oid = ObjectId(pid)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid id")
+    data = await _apply_psy_payload(body)
+    result = await db.psychologists.update_one({"_id": oid}, {"$set": data})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Psychologist not found")
+    await link_psychologist_user(pid, body.login_phone, body.name.strip())
+    prof = await db.psychologists.find_one({"_id": oid})
+    return {"psychologist": _psy_public(prof)}
+
+
+@router.delete("/admin/psychologists/{pid}")
+async def admin_delete_psychologist(pid: str, _: dict = Depends(get_admin)):
+    try:
+        oid = ObjectId(pid)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid id")
+    await unlink_psychologist_user(pid)
+    result = await db.psychologists.delete_one({"_id": oid})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Psychologist not found")
+    return {"ok": True}

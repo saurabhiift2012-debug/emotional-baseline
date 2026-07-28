@@ -40,7 +40,8 @@ if TWILIO_ENABLED:
 
 # Whitelisted test numbers bypass the SMS provider and use a static code.
 # Lets the demo account + automated tests work without a real SMS.
-TEST_PHONES = {"+919999900000": "123456"}
+# +919999900001 is the seeded psychologist (Dr. Ruchi Sharma) login.
+TEST_PHONES = {"+919999900000": "123456", "+919999900001": "123456"}
 
 # ---- Razorpay (payments) ----
 RAZORPAY_KEY_ID = os.environ.get('RAZORPAY_KEY_ID')

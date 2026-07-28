@@ -1,7 +1,9 @@
 import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect, useState } from "react";
-import { View, Text, Pressable, StyleSheet, LogBox } from "react-native";
+import { View, Text, Pressable, StyleSheet, LogBox, Platform, Alert, Linking } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Notifications from "expo-notifications";
 import Animated, { useSharedValue, useAnimatedStyle, withTiming, runOnJS } from "react-native-reanimated";
 import { StatusBar } from "expo-status-bar";
 import { Feather } from "@expo/vector-icons";
@@ -18,6 +20,25 @@ import { Logo } from "@/src/Logo";
 
 LogBox.ignoreAllLogs(true);
 SplashScreen.preventAutoHideAsync();
+
+// Push: foreground display behaviour (module scope, native only).
+if (Platform.OS !== "web") {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+    }),
+  });
+}
+// Push: Android channel (module scope, before any notification arrives).
+if (Platform.OS === "android") {
+  Notifications.setNotificationChannelAsync("default", {
+    name: "Default",
+    importance: Notifications.AndroidImportance.MAX,
+    sound: "default",
+  });
+}
 
 function UrgentHelpLink() {
   const { colors } = useTheme();
@@ -67,6 +88,40 @@ function BrandSplash() {
 
 function ThemedStack() {
   const { colors, scheme } = useTheme();
+  const router = useRouter();
+
+  // Push tap handling (warm + cold start) and denied-permission weekly nudge.
+  useEffect(() => {
+    if (Platform.OS === "web") return;
+    const routeFrom = (data: any) => {
+      const url = data?.deeplink || data?.action_url;
+      if (!url) return;
+      url.startsWith("http") ? Linking.openURL(url) : router.push(url);
+    };
+    const tapSub = Notifications.addNotificationResponseReceivedListener((response) => {
+      routeFrom(response?.notification?.request?.content?.data || {});
+    });
+    Notifications.getLastNotificationResponseAsync().then((response) => {
+      if (response) routeFrom(response.notification.request.content.data || {});
+    });
+    (async () => {
+      const { status, canAskAgain } = await Notifications.getPermissionsAsync();
+      if (status !== "denied" || canAskAgain) return;
+      const lastNudge = await AsyncStorage.getItem("pushNudgeAt");
+      const oneWeek = 7 * 24 * 60 * 60 * 1000;
+      if (lastNudge && Date.now() - Number(lastNudge) <= oneWeek) return;
+      Alert.alert(
+        "Turn on notifications?",
+        "Get instant updates when a psychologist accepts, declines, or reschedules your session.",
+        [
+          { text: "Later", style: "cancel", onPress: () => AsyncStorage.setItem("pushNudgeAt", String(Date.now())) },
+          { text: "Open Settings", onPress: () => { AsyncStorage.setItem("pushNudgeAt", String(Date.now())); Linking.openSettings(); } },
+        ]
+      );
+    })();
+    return () => { tapSub.remove(); };
+  }, [router]);
+
   return (
     <View style={{ flex: 1 }}>
       <StatusBar style={scheme === "dark" ? "light" : "dark"} />

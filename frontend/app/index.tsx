@@ -12,5 +12,6 @@ export default function Index() {
       </Screen>
     );
   }
-  return <Redirect href={user ? "/(tabs)" : "/onboarding"} />;
+  if (!user) return <Redirect href="/onboarding" />;
+  return <Redirect href={user.role === "psychologist" ? "/psy-dashboard" : "/(tabs)"} />;
 }

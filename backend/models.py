@@ -45,6 +45,34 @@ class BookingOrderIn(BaseModel):
     psychologist_id: str
     slot_id: str
     session_type: str
+    idempotency_key: Optional[str] = None
+
+
+class RescheduleIn(BaseModel):
+    new_slot_id: str
+
+
+class RegisterPushBody(BaseModel):
+    user_id: str
+    platform: str   # "android" | "ios"
+    device_token: str
+
+
+class AdminPsychologistIn(BaseModel):
+    name: str
+    login_phone: str
+    qualifications: Optional[str] = ""
+    specializations: List[str] = []
+    languages: List[str] = ["English"]
+    bio: Optional[str] = ""
+    price: int = 1000
+    short_call_price: Optional[int] = None
+    currency: str = "INR"
+    session_types: List[str] = ["15-min Call"]
+    available_days: List[int] = [0, 1, 2, 3, 4]
+    slot_hours: List[int] = [10, 11, 12]
+    verified: bool = True
+    photo: Optional[str] = None
 
 
 class BookingVerifyIn(BaseModel):

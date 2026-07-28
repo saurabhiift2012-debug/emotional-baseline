@@ -16,6 +16,8 @@ def public_user(u: dict) -> dict:
         "emergency_contact": u.get('emergency_contact'),
         "agreement": u.get('agreement'),
         "assigned_resources": u.get('assigned_resources', []),
+        "role": u.get('role', 'user'),
+        "psychologist_id": u.get('psychologist_id'),
     }
 
 

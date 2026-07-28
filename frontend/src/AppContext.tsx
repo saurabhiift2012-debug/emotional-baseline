@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { api, saveToken, getToken, clearToken } from "./api";
+import { registerForPush } from "./push";
 import { makeT, Lang } from "./i18n";
 import { MOODS, Mood } from "./moods";
 
@@ -12,6 +13,8 @@ type User = {
   consents: Record<string, boolean>;
   health_connected: Record<string, boolean>;
   assigned_resources?: string[];
+  role?: string;
+  psychologist_id?: string | null;
 };
 
 type Ctx = {
@@ -22,7 +25,7 @@ type Ctx = {
   moods: Mood[];
   setLang: (l: Lang) => Promise<void>;
   requestOtp: (payload: any) => Promise<{ dev_code?: string }>;
-  verifyOtp: (phone: string, code: string) => Promise<void>;
+  verifyOtp: (phone: string, code: string) => Promise<User>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
   updateConsents: (c: Record<string, boolean>) => Promise<void>;
@@ -48,6 +51,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const u = await api.get("/auth/me");
         setUser(u);
         setLangState(u.language || "en");
+        registerForPush(u.id);
       } catch {
         await clearToken();
       }
@@ -68,6 +72,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await saveToken(res.token);
     setUser(res.user);
     setLangState(res.user.language || "en");
+    registerForPush(res.user.id);
+    return res.user as User;
   };
 
   const logout = async () => {

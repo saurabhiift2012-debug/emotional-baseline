@@ -28,10 +28,12 @@ export function MoodGate() {
   const hadUser = useRef(false);
 
   const seg = segments.join("/");
-  // Never gate the auth flow or a crisis moment.
+  // Never gate the auth flow, a crisis moment, or the psychologist dashboard.
+  // Psychologists never get the daily mood gate.
   const suppressed =
+    (user && user.role === "psychologist") ||
     seg.includes("crisis") || seg.includes("login") || seg.includes("register") ||
-    seg.includes("onboarding") || seg.includes("welcome") || seg === "";
+    seg.includes("onboarding") || seg.includes("welcome") || seg.includes("psy-dashboard") || seg === "";
 
   // Show on cold start / immediately after authentication.
   useEffect(() => {

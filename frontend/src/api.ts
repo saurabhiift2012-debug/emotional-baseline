@@ -68,8 +68,11 @@ export function adminApi(token: string) {
   const h = { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
   return {
     get: async (path: string) => handle(await fetch(`${BASE}/api${path}`, { headers: h })),
+    post: async (path: string, body?: any) =>
+      handle(await fetch(`${BASE}/api${path}`, { method: "POST", headers: h, body: body ? JSON.stringify(body) : undefined })),
     put: async (path: string, body?: any) =>
       handle(await fetch(`${BASE}/api${path}`, { method: "PUT", headers: h, body: body ? JSON.stringify(body) : undefined })),
+    del: async (path: string) => handle(await fetch(`${BASE}/api${path}`, { method: "DELETE", headers: h })),
   };
 }
 

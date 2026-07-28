@@ -6,6 +6,7 @@ import * as Haptics from "expo-haptics";
 import { useApp } from "@/src/AppContext";
 import { adminAuth, adminApi } from "@/src/api";
 import { Logo } from "@/src/Logo";
+import { AdminPsychologists } from "@/src/AdminPsychologists";
 import { Screen, Display, AppText, Card, PrimaryButton, spacing, radius, T, useTheme, useThemedStyles } from "@/src/ui";
 
 type Metrics = {
@@ -209,6 +210,9 @@ export default function Admin() {
                 </Card>
               );
             })}
+
+            {/* Manage psychologists */}
+            {token && <AdminPsychologists token={token} />}
           </>
         )}
         <View style={{ height: spacing.xl * 2 }} />
