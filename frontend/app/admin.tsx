@@ -129,7 +129,7 @@ export default function Admin() {
         </Pressable>
         <Display style={styles.title}>{t("admin_title")}</Display>
       </View>
-      <ScrollView contentContainerStyle={styles.wrap} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={styles.wrap} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="none">
         {!metrics ? (
           <ActivityIndicator color={colors.indigo} style={{ marginTop: spacing.xl }} />
         ) : (
